@@ -7,8 +7,8 @@ description: Reconstruct a DataScienceKit project's current state from durable f
 
 Do not assume any prior agent or conversation memory.
 
-1. Run `dskit context --json` from the project root.
-2. Read project principles, the active study's completed artifacts in numeric
+1. Run `dskit context --json` from the project root and verify Git is active.
+2. Read `.dskit/AGENT_GUIDE.md`, project principles, the active study's completed artifacts in numeric
    order, the recent project log, and the thought backlog.
 3. Treat artifacts and logs as evidence, not necessarily truth. Flag conflicts,
    stale assumptions, missing provenance, and incomplete placeholders.
@@ -17,7 +17,7 @@ Do not assume any prior agent or conversation memory.
    exact next action.
 5. If the wrong study is active, list available studies and ask before running
    `dskit activate <study>`.
-6. Append a handoff entry only if new state or a new next action was agreed.
+6. Append a handoff entry only if new state or a new next action was agreed, then
+   commit that handoff according to the agent guide.
 
 Do not modify a methodology artifact merely to make status appear complete.
-

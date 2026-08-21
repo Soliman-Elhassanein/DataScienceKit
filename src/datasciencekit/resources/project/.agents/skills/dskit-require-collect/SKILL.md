@@ -10,8 +10,9 @@ description: >
 
 Work only on IBM stages 3 and 4.
 
-1. Run `dskit context --json`; read principles, the active study's stages 1–2,
-   recent project log entries, and relevant thoughts.
+1. Run `dskit context --json`; verify Git is active and read
+   `.dskit/AGENT_GUIDE.md`, principles, the active study's stages 1–2, recent
+   project log entries, and relevant thoughts.
 2. Fill `03-data-requirements.md` before collection. Specify concepts,
    population, unit, outcome, timing, history, volume, relationships, formats,
    quality thresholds, access, permitted purpose, and infeasibility conditions.

@@ -57,6 +57,10 @@ cd your-project
 dskit init
 ```
 
+Git is required. If the directory is not already inside a Git repository,
+`dskit init` initializes one on `main`. Every DataScienceKit agent must inspect
+repository state before working and create a focused commit before handoff.
+
 The generic working protocol is written to `.dskit/AGENT_GUIDE.md`. Any agent—or
 a person working without an agent—can resume by running:
 
@@ -136,6 +140,19 @@ Use `$dskit-resume` in Codex or `dskit context` with any agent to reconstruct th
 active study, completed stages, next stage, recent decisions, and available
 studies without relying on conversation memory.
 
+## Mandatory version control
+
+Version control is a hard workflow gate:
+
+- `dskit init` requires Git and initializes a repository when needed.
+- `dskit status` and `dskit context` report the Git root, branch, and dirty state.
+- `dskit validate` fails when the project is not under Git version control.
+- Every agent starts with `git status --short --branch`.
+- Every agent stages only its own task files and reviews `git diff --cached`.
+- Every coherent methodology or analysis change is committed before handoff.
+- Failed code checks cannot be committed as completed work.
+- Agents report the commit hash and never push without explicit authorization.
+
 ## Thoughts and logs
 
 Capture an idea without changing approved study scope:
@@ -180,7 +197,7 @@ scientific review rather than the entire quality gate.
 ## CLI reference
 
 ```text
-dskit init [PATH] [--force]          Initialize a project
+dskit init [PATH] [--force]          Initialize a project and ensure Git
 dskit new "STUDY TITLE"              Create and activate a study
 dskit activate STUDY                 Switch the active study
 dskit status [--json]                Show all IBM stages and the next stage

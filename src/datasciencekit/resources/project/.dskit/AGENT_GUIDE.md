@@ -3,16 +3,23 @@
 This project does not depend on a particular agent or conversation session.
 Durable files are authoritative; conversation memory is not.
 
+Git version control is mandatory. `dskit init` creates a `main` repository when
+the project is not already inside one. An agent must not perform DataScienceKit
+work when `dskit context --json` reports that no Git repository exists.
+
 ## Start or Resume
 
-1. Run `dskit context --json` from anywhere inside the project.
-2. Read `.dskit/memory/principles.md`.
-3. Read `.dskit/memory/code-quality.md` before changing analysis code.
-4. Read completed active-study artifacts in numeric order.
-5. Read the recent entries in `.dskit/logs/project.md`.
-6. Review relevant entries in `.dskit/thoughts/backlog.md` without treating
+1. Run `dskit context --json` from anywhere inside the project and verify
+   `version_control.repository` is `true`.
+2. Run `git status --short --branch`. Preserve all pre-existing and unrelated
+   changes; never absorb them into the agent's commit.
+3. Read `.dskit/memory/principles.md`.
+4. Read `.dskit/memory/code-quality.md` before changing analysis code.
+5. Read completed active-study artifacts in numeric order.
+6. Read the recent entries in `.dskit/logs/project.md`.
+7. Review relevant entries in `.dskit/thoughts/backlog.md` without treating
    proposed thoughts as approved work.
-7. Continue from `next_stage` unless evidence requires revisiting an earlier IBM
+8. Continue from `next_stage` unless evidence requires revisiting an earlier IBM
    stage. Record that iteration explicitly.
 
 ## While Working
@@ -35,6 +42,13 @@ Durable files are authoritative; conversation memory is not.
    `dskit thought "<idea and motivation>"`
 
 4. Run `dskit status` and report the active study and next stage.
+5. Stage only files changed for the current task, including its methodology and
+   log updates. Review `git diff --cached`, then create a focused commit.
+6. Report the commit hash. If no files changed, explicitly report that no commit
+   was needed. Never amend or push unless the user explicitly requests it.
+
+Do not hand off uncommitted DataScienceKit work. If a required check fails, do
+not commit code as complete; leave the worktree intact and report the blocker.
 
 ## Code Quality Review
 

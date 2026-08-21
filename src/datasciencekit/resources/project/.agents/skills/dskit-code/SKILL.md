@@ -7,12 +7,13 @@ description: Implement or modify code for a data-science study with coherent str
 
 Complete the requested analytical change and leave a focused, verified commit.
 
-1. Run `dskit context --json`. Read project principles,
-   `.dskit/memory/code-quality.md`, relevant IBM-stage artifacts, and recent
-   project log entries. Treat durable files as context, not conversation memory.
+1. Run `dskit context --json`; verify Git is active, then read
+   `.dskit/AGENT_GUIDE.md`, project principles, `.dskit/memory/code-quality.md`,
+   relevant IBM-stage artifacts, and recent project log entries. Treat durable
+   files as context, not conversation memory.
 2. Run `git status --short` before editing. Identify pre-existing changes and do
-   not modify, stage, or commit unrelated user work. If this is not a Git
-   repository, ask before initializing one.
+   not modify, stage, or commit unrelated user work. Stop if Git is unavailable
+   or the project is not a repository; `dskit init` is responsible for setup.
 3. Inspect the existing analysis organization and follow coherent conventions.
    Keep notebooks for exploration/communication and move reusable or
    decision-critical behavior into structured reusable units. Make data inputs,

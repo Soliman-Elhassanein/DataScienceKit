@@ -7,6 +7,7 @@ import contextlib
 import json
 import re
 import shutil
+import subprocess
 import sys
 import uuid
 from collections.abc import Iterable
@@ -51,6 +52,16 @@ class DskitError(RuntimeError):
 
 def _resource_path(*parts: str):
     return files("datasciencekit").joinpath("resources", *parts)
+
+
+def _resource_conflicts(source_parts: tuple[str, ...], destination: Path) -> list[Path]:
+    source = _resource_path(*source_parts)
+    with as_file(source) as source_path:
+        return [
+            destination / item.relative_to(source_path)
+            for item in sorted(source_path.rglob("*"))
+            if item.is_file() and (destination / item.relative_to(source_path)).exists()
+        ]
 
 
 def _copy_resource_tree(source_parts: tuple[str, ...], destination: Path, force: bool) -> list[Path]:
@@ -170,12 +181,61 @@ def find_project_root(start: Path | None = None) -> Path:
     raise DskitError("not inside a DataScienceKit project; run `dskit init` first")
 
 
+def _run_git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["git", "-C", str(root), *args],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+
+def ensure_git_repository(root: Path) -> Path:
+    if shutil.which("git") is None:
+        raise DskitError("Git is required for every DataScienceKit project but was not found")
+    existing = _run_git(root, "rev-parse", "--show-toplevel")
+    if existing.returncode == 0:
+        return Path(existing.stdout.strip()).resolve()
+    initialized = _run_git(root, "init", "-b", "main")
+    if initialized.returncode != 0:
+        detail = initialized.stderr.strip() or initialized.stdout.strip()
+        raise DskitError(f"could not initialize Git version control: {detail}")
+    return root.resolve()
+
+
+def version_control_status(root: Path) -> dict[str, Any]:
+    if shutil.which("git") is None:
+        return {"system": "git", "available": False, "repository": False}
+    repository = _run_git(root, "rev-parse", "--show-toplevel")
+    if repository.returncode != 0:
+        return {"system": "git", "available": True, "repository": False}
+    branch = _run_git(root, "branch", "--show-current")
+    changes = _run_git(root, "status", "--short")
+    return {
+        "system": "git",
+        "available": True,
+        "repository": True,
+        "root": str(Path(repository.stdout.strip()).resolve()),
+        "branch": branch.stdout.strip() or None,
+        "dirty": bool(changes.stdout.strip()),
+        "change_count": len(changes.stdout.splitlines()),
+    }
+
+
 def init_project(target: Path, force: bool = False) -> list[Path]:
     target = target.resolve()
     target.mkdir(parents=True, exist_ok=True)
     config_path = target / MANAGED_DIR / "config.json"
     if config_path.exists() and not force:
         raise DskitError(f"DataScienceKit is already initialized at {target}")
+
+    if not force:
+        conflicts = _resource_conflicts(("project",), target)
+        if conflicts:
+            rendered = "\n".join(f"- {path}" for path in conflicts)
+            raise DskitError(f"managed files already exist:\n{rendered}")
+
+    git_root = ensure_git_repository(target)
 
     previous_config: dict[str, Any] = {}
     if config_path.exists() and force:
@@ -185,16 +245,17 @@ def init_project(target: Path, force: bool = False) -> list[Path]:
     _write_json(
         config_path,
         {
-            "schema_version": 2,
+            "schema_version": 3,
             "tool_version": __version__,
             "active_study": previous_config.get("active_study"),
             "methodology": "IBM Data Science Methodology",
+            "version_control": "git",
         },
     )
     if config_path not in written:
         written.append(config_path)
     machine_log = target / MANAGED_DIR / "logs" / "machine.jsonl"
-    _append_machine_event(target, "project_initialized", force=force)
+    _append_machine_event(target, "project_initialized", force=force, git_root=str(git_root))
     if machine_log not in written:
         written.append(machine_log)
     return written
@@ -282,6 +343,7 @@ def project_status(root: Path) -> dict[str, Any]:
         "machine_log": str(root / MANAGED_DIR / "logs" / "machine.jsonl"),
         "thoughts": str(root / MANAGED_DIR / "thoughts" / "backlog.md"),
         "quality_reviews": [],
+        "version_control": version_control_status(root),
         "artifacts": {},
         "next_stage": None,
     }
@@ -325,6 +387,8 @@ def project_context(root: Path) -> dict[str, Any]:
 def validate_project(root: Path) -> list[str]:
     status = project_status(root)
     errors: list[str] = []
+    if not status["version_control"].get("repository"):
+        errors.append("Git version control is required")
     if not status["principles"]["complete"]:
         errors.append("project principles are incomplete")
     if not status["active_study"]:
@@ -343,6 +407,13 @@ def _print_status(status: dict[str, Any]) -> None:
     print(f"Project: {status['project_root']}")
     print(f"Principles: {marker}")
     print(f"Active study: {status['active_study'] or 'none'}")
+    version_control = status["version_control"]
+    if version_control.get("repository"):
+        branch = version_control.get("branch") or "unborn branch"
+        state = "dirty" if version_control.get("dirty") else "clean"
+        print(f"Version control: Git ({branch}, {state})")
+    else:
+        print("Version control: REQUIRED — Git repository not found")
     if status["next_stage"]:
         print(f"Next stage: {status['next_stage']['name']}")
     for artifact in status["artifacts"].values():
@@ -402,6 +473,7 @@ def run(argv: Iterable[str] | None = None) -> int:
         target = Path(args.path)
         written = init_project(target, args.force)
         print(f"Initialized DataScienceKit in {target.resolve()}")
+        print(f"Version control: Git ({version_control_status(target)['root']})")
         print(f"Installed {len(written)} managed files. Start with $dskit-principles.")
         return 0
 
@@ -416,7 +488,6 @@ def run(argv: Iterable[str] | None = None) -> int:
         return 0
     if args.command == "status":
         status = project_status(root)
-        _append_machine_event(root, "status_read", json=args.as_json)
         if args.as_json:
             print(json.dumps(status, indent=2))
         else:
@@ -424,7 +495,6 @@ def run(argv: Iterable[str] | None = None) -> int:
         return 0
     if args.command == "context":
         context = project_context(root)
-        _append_machine_event(root, "context_read", json=args.as_json)
         if args.as_json:
             print(json.dumps(context, indent=2))
         else:
@@ -450,7 +520,6 @@ def run(argv: Iterable[str] | None = None) -> int:
         return 0
     if args.command == "validate":
         errors = validate_project(root)
-        _append_machine_event(root, "project_validated", valid=not errors, error_count=len(errors))
         if args.as_json:
             print(json.dumps({"valid": not errors, "errors": errors}, indent=2))
         elif errors:

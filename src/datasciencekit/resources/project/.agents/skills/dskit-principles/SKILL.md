@@ -7,8 +7,8 @@ description: Establish durable data-science standards for decisions, governance,
 
 Define rules that apply to every study, independent of any agent or session.
 
-1. Run `dskit context --json`. Read `.dskit/memory/principles.md` and the
-   project log before acting.
+1. Run `dskit context --json`. Verify Git is active and read
+   `.dskit/AGENT_GUIDE.md`, `.dskit/memory/principles.md`, and the project log.
 2. Preserve existing evidence-backed rules. Resolve only project-wide standards:
    decision evidence, permitted data use, leakage controls, reproducibility,
    baselines, uncertainty, evaluation, approval, monitoring, and stop criteria.
@@ -19,4 +19,3 @@ Define rules that apply to every study, independent of any agent or session.
    "Principles" "<summary and next action>"`.
 
 Do not create a study or choose an analytic method.
-

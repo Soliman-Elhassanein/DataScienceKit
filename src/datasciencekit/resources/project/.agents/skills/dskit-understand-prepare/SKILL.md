@@ -10,7 +10,8 @@ description: >
 
 Work only on IBM stages 5 and 6.
 
-1. Run `dskit context --json`; reconstruct the study from principles, stages
+1. Run `dskit context --json`; verify Git is active and read
+   `.dskit/AGENT_GUIDE.md`, then reconstruct the study from principles, stages
    1–4, recent project log entries, and relevant thoughts.
 2. Produce reproducible aggregate evidence about structure, distributions,
    missingness, duplicates, invalid values, time behavior, relationships,

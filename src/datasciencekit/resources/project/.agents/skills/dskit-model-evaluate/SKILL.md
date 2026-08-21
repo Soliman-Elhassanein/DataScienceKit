@@ -10,8 +10,9 @@ description: >
 
 Work on IBM stages 7 and 8 while keeping planning distinct from judgment.
 
-1. Run `dskit context --json`; read principles, stages 1–6, recent project log
-   entries, and relevant thoughts. Do not rely on remembered session context.
+1. Run `dskit context --json`; verify Git is active and read
+   `.dskit/AGENT_GUIDE.md`, principles, stages 1–6, recent project log entries,
+   and relevant thoughts. Do not rely on remembered session context.
 2. Before observing final results, fill the Modeling Plan in `07-modeling.md`:
    baseline, candidate methods, fixed measures, acceptance rules, search budget,
    repetitions, stopping rule, and reproducibility record.

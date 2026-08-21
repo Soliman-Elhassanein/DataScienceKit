@@ -7,7 +7,8 @@ description: Capture, review, or promote possible future data-science improvemen
 
 Thoughts are proposals, not approved scope or established evidence.
 
-1. Run `dskit context --json` and read `.dskit/thoughts/backlog.md`.
+1. Run `dskit context --json`; verify Git is active and read
+   `.dskit/AGENT_GUIDE.md` and `.dskit/thoughts/backlog.md`.
 2. To capture an idea, run `dskit thought "<concise idea and motivation>"`.
 3. When reviewing, assess relevance, expected value, evidence needed, affected
    IBM stage, risks, and conflicts with project principles.
@@ -18,4 +19,3 @@ Thoughts are proposals, not approved scope or established evidence.
 
 Do not use the thought backlog to bypass success criteria, final-partition
 protections, data governance, or stakeholder approval.
-

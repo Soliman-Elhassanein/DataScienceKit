@@ -10,8 +10,9 @@ description: >
 
 Work only on IBM stages 1 and 2.
 
-1. Run `dskit context --json`. Read principles, recent project log entries, and
-   the thought backlog. Do not rely on prior conversation memory.
+1. Run `dskit context --json`. Verify Git is active and read
+   `.dskit/AGENT_GUIDE.md`, principles, recent project log entries, and the
+   thought backlog. Do not rely on prior conversation memory.
 2. If this is a new study, run `dskit new "<short title>"`. Do not replace an
    active study without clear intent.
 3. Fill `01-business-understanding.md` from stakeholder and domain evidence:

@@ -38,3 +38,12 @@ These principles apply to descriptive, diagnostic, predictive, prescriptive,
 causal, forecasting, and experimental work. They do not assume that every study
 produces a machine-learning model.
 
+## Version Control
+
+- Git version control is mandatory for every DataScienceKit project.
+- Each agent inspects repository state before work and preserves unrelated
+  changes.
+- Each coherent methodology or analysis change is committed before handoff.
+- Commits exclude credentials, raw/private data, caches, and large generated
+  output.
+- Pushing remains an explicit user-authorized action.

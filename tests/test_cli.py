@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -19,6 +20,7 @@ from datasciencekit.cli import (
     new_study,
     project_context,
     project_status,
+    validate_project,
 )
 
 
@@ -34,6 +36,7 @@ class DataScienceKitCliTests(unittest.TestCase):
         written = init_project(self.root)
 
         self.assertTrue((self.root / ".dskit/config.json").is_file())
+        self.assertTrue((self.root / ".git").is_dir())
         self.assertTrue((self.root / ".dskit/AGENT_GUIDE.md").is_file())
         self.assertTrue((self.root / ".dskit/memory/principles.md").is_file())
         self.assertTrue((self.root / ".dskit/memory/code-quality.md").is_file())
@@ -44,6 +47,7 @@ class DataScienceKitCliTests(unittest.TestCase):
         self.assertEqual(10, len(skills))
         event = json.loads((self.root / ".dskit/logs/machine.jsonl").read_text().splitlines()[0])
         self.assertEqual("project_initialized", event["event"])
+        self.assertTrue(project_status(self.root)["version_control"]["repository"])
         self.assertGreaterEqual(len(written), 17)
 
     def test_init_preflights_conflicts_without_partial_overwrite(self) -> None:
@@ -56,6 +60,7 @@ class DataScienceKitCliTests(unittest.TestCase):
 
         self.assertEqual("mine\n", conflict.read_text(encoding="utf-8"))
         self.assertFalse((self.root / ".dskit/config.json").exists())
+        self.assertFalse((self.root / ".git").exists())
 
     def test_new_study_creates_all_ten_ibm_artifacts_and_sets_active(self) -> None:
         init_project(self.root)
@@ -97,6 +102,37 @@ class DataScienceKitCliTests(unittest.TestCase):
         payload = json.loads(output.getvalue())
         self.assertEqual(str(self.root.resolve()), payload["project_root"])
         self.assertIn("01-business-understanding.md", payload["artifacts"])
+        self.assertTrue(payload["version_control"]["repository"])
+
+    def test_status_is_read_only_for_a_clean_git_repository(self) -> None:
+        init_project(self.root)
+        subprocess.run(["git", "-C", str(self.root), "config", "user.name", "Test Agent"], check=True)
+        subprocess.run(
+            ["git", "-C", str(self.root), "config", "user.email", "agent@example.invalid"],
+            check=True,
+        )
+        subprocess.run(["git", "-C", str(self.root), "add", "."], check=True)
+        subprocess.run(
+            ["git", "-C", str(self.root), "commit", "-m", "Initialize study workflow"],
+            check=True,
+            capture_output=True,
+        )
+
+        self.assertFalse(project_status(self.root)["version_control"]["dirty"])
+        previous = Path.cwd()
+        try:
+            os.chdir(self.root)
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(0, main(["status", "--json"]))
+        finally:
+            os.chdir(previous)
+        self.assertFalse(project_status(self.root)["version_control"]["dirty"])
+
+    def test_validate_rejects_project_without_git_repository(self) -> None:
+        init_project(self.root)
+        (self.root / ".git").rename(self.root / ".git-disabled")
+
+        self.assertIn("Git version control is required", validate_project(self.root))
 
     def test_logs_thoughts_and_context_are_durable(self) -> None:
         init_project(self.root)

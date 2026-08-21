@@ -7,9 +7,9 @@ description: Review data-science analysis code for validity, reproducibility, le
 
 Assess whether analysis code can support trustworthy and reproducible findings.
 
-1. Run `dskit context --json`. Read principles, relevant active-study artifacts,
-   recent project log entries, and prior quality reviews. Do not rely on session
-   memory.
+1. Run `dskit context --json`. Verify Git is active and read
+   `.dskit/AGENT_GUIDE.md`, principles, relevant active-study artifacts, recent
+   project log entries, and prior quality reviews. Do not rely on session memory.
 2. Unless continuing a named existing review, run `dskit quality --scope
    "<entire project or requested directory>" --json` and use the returned report.
 3. Inventory analytical entry points, notebooks, queries, transformations,

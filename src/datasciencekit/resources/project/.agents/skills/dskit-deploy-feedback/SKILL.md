@@ -12,8 +12,9 @@ Deployment here means adoption of an approved analytical result in a decision,
 research, report, or operating process. Implementation mechanisms are outside
 this workflow.
 
-1. Run `dskit context --json`; read principles, all completed active-study
-   stages, recent project log entries, and relevant thoughts.
+1. Run `dskit context --json`; verify Git is active and read
+   `.dskit/AGENT_GUIDE.md`, principles, all completed active-study stages, recent
+   project log entries, and relevant thoughts.
 2. Do not recommend adoption when evaluation has a failed blocking gate.
 3. Fill `09-deployment.md`: result, recipients, intended/prohibited use,
    versioned deliverables, interpretation, caveats, human approval, fallback,
