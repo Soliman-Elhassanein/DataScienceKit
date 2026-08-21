@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import re
 import shutil
 import sys
 import uuid
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from importlib.resources import as_file, files
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from datasciencekit import __version__
 
@@ -91,10 +93,8 @@ def _append_machine_event(root: Path, event: str, **details: Any) -> None:
     config_path = root / MANAGED_DIR / "config.json"
     active_study = None
     if config_path.is_file():
-        try:
+        with contextlib.suppress(OSError, json.JSONDecodeError):
             active_study = json.loads(config_path.read_text(encoding="utf-8")).get("active_study")
-        except (OSError, json.JSONDecodeError):
-            pass
     payload = {
         "timestamp": _utc_now(),
         "event": event,
@@ -138,6 +138,27 @@ def append_thought(root: Path, thought: str) -> str:
         stream.write(entry)
     _append_machine_event(root, "thought_captured", thought_id=thought_id)
     return thought_id
+
+
+def new_quality_review(root: Path, scope: str = "Entire data-science project") -> Path:
+    created_at = _utc_now()
+    review_id = f"{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}-{uuid.uuid4().hex[:6]}"
+    reviews = root / MANAGED_DIR / "quality"
+    reviews.mkdir(parents=True, exist_ok=True)
+    destination = reviews / f"{review_id}-code-quality.md"
+    override = root / MANAGED_DIR / "templates" / "code-quality.md"
+    source = override if override.is_file() else _resource_path("quality", "code-quality.md")
+    with as_file(source) as source_path:
+        content = source_path.read_text(encoding="utf-8")
+    content = content.replace("{{SCOPE}}", scope.strip()).replace("{{CREATED_AT}}", created_at)
+    destination.write_text(content, encoding="utf-8")
+    _append_machine_event(
+        root,
+        "quality_review_created",
+        scope=scope.strip(),
+        report=destination.relative_to(root).as_posix(),
+    )
+    return destination
 
 
 def find_project_root(start: Path | None = None) -> Path:
@@ -259,6 +280,7 @@ def project_status(root: Path) -> dict[str, Any]:
         "project_log": str(root / MANAGED_DIR / "logs" / "project.md"),
         "machine_log": str(root / MANAGED_DIR / "logs" / "machine.jsonl"),
         "thoughts": str(root / MANAGED_DIR / "thoughts" / "backlog.md"),
+        "quality_reviews": [],
         "artifacts": {},
         "next_stage": None,
     }
@@ -280,6 +302,12 @@ def project_status(root: Path) -> dict[str, Any]:
                     "artifact": artifact,
                     "path": str(path),
                 }
+    quality_dir = root / MANAGED_DIR / "quality"
+    if quality_dir.is_dir():
+        result["quality_reviews"] = [
+            path.relative_to(root).as_posix()
+            for path in sorted(quality_dir.glob("*-code-quality.md"))
+        ]
     return result
 
 
@@ -316,7 +344,7 @@ def _print_status(status: dict[str, Any]) -> None:
     print(f"Active study: {status['active_study'] or 'none'}")
     if status["next_stage"]:
         print(f"Next stage: {status['next_stage']['name']}")
-    for name, artifact in status["artifacts"].items():
+    for artifact in status["artifacts"].values():
         if artifact["todo_count"] == -1:
             marker = "missing"
         elif artifact["complete"]:
@@ -357,6 +385,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     thought = subparsers.add_parser("thought", help="capture a possible future improvement without committing to it")
     thought.add_argument("text")
+
+    quality = subparsers.add_parser("quality", help="start a data-science code-quality review")
+    quality.add_argument("--scope", default="Entire data-science project")
+    quality.add_argument("--json", action="store_true", dest="as_json")
 
     validate = subparsers.add_parser("validate", help="check that required artifacts are complete")
     validate.add_argument("--json", action="store_true", dest="as_json")
@@ -406,6 +438,14 @@ def run(argv: Iterable[str] | None = None) -> int:
     if args.command == "thought":
         thought_id = append_thought(root, args.text)
         print(f"Captured {thought_id} in .dskit/thoughts/backlog.md")
+        return 0
+    if args.command == "quality":
+        report = new_quality_review(root, args.scope)
+        payload = {"project_root": str(root), "report": str(report), "scope": args.scope}
+        if args.as_json:
+            print(json.dumps(payload, indent=2))
+        else:
+            print(f"Quality review created: {report.relative_to(root).as_posix()}")
         return 0
     if args.command == "validate":
         errors = validate_project(root)

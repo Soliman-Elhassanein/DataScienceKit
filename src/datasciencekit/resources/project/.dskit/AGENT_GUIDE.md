@@ -35,3 +35,9 @@ Durable files are authoritative; conversation memory is not.
 
 4. Run `dskit status` and report the active study and next stage.
 
+## Code Quality Review
+
+For analysis-code review, create a durable report with `dskit quality`. Inspect
+validity and reproducibility before style. For Python files and notebooks, run
+the project's configured Ruff check and record the exact command and result.
+Keep prior reports under `.dskit/quality/` for comparison across sessions.

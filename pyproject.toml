@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "datasciencekit"
-version = "0.2.0"
+version = "0.3.0"
 description = "An artifact-driven workflow for reproducible data-science projects"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -19,6 +19,9 @@ classifiers = [
 ]
 dependencies = []
 
+[project.optional-dependencies]
+quality = ["ruff==0.16.2"]
+
 [project.scripts]
 dskit = "datasciencekit.cli:main"
 
@@ -28,3 +31,11 @@ packages = ["src/datasciencekit"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+required-version = "==0.16.2"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP", "SIM", "RUF"]

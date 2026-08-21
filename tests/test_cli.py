@@ -15,6 +15,7 @@ from datasciencekit.cli import (
     append_thought,
     init_project,
     main,
+    new_quality_review,
     new_study,
     project_context,
     project_status,
@@ -38,10 +39,10 @@ class DataScienceKitCliTests(unittest.TestCase):
         self.assertTrue((self.root / ".dskit/logs/project.md").is_file())
         self.assertTrue((self.root / ".dskit/thoughts/backlog.md").is_file())
         skills = sorted((self.root / ".agents/skills").glob("dskit-*/SKILL.md"))
-        self.assertEqual(8, len(skills))
+        self.assertEqual(9, len(skills))
         event = json.loads((self.root / ".dskit/logs/machine.jsonl").read_text().splitlines()[0])
         self.assertEqual("project_initialized", event["event"])
-        self.assertGreaterEqual(len(written), 14)
+        self.assertGreaterEqual(len(written), 15)
 
     def test_init_preflights_conflicts_without_partial_overwrite(self) -> None:
         conflict = self.root / ".agents/skills/dskit-understand/SKILL.md"
@@ -113,6 +114,21 @@ class DataScienceKitCliTests(unittest.TestCase):
         self.assertIn("thought_captured", machine_events)
         self.assertEqual(["001-retention"], context["studies"])
         self.assertTrue(any("Outcome definition approved" in line for line in context["recent_project_log"]))
+
+    def test_quality_review_is_timestamped_tracked_and_uses_scope(self) -> None:
+        init_project(self.root)
+        report = new_quality_review(self.root, "notebooks/")
+
+        self.assertTrue(report.is_file())
+        self.assertIn("Scope: notebooks/", report.read_text())
+        self.assertIn("Ruff Check", report.read_text())
+        status = project_status(self.root)
+        self.assertEqual([report.relative_to(self.root).as_posix()], status["quality_reviews"])
+        events = [
+            json.loads(line)["event"]
+            for line in (self.root / ".dskit/logs/machine.jsonl").read_text().splitlines()
+        ]
+        self.assertIn("quality_review_created", events)
 
     def test_activate_switches_between_studies(self) -> None:
         init_project(self.root)

@@ -83,6 +83,7 @@ $dskit-require-collect
 $dskit-understand-prepare
 $dskit-model-evaluate
 $dskit-deploy-feedback
+$dskit-quality
 ```
 
 Each group produces two numbered IBM methodology artifacts. Modeling includes
@@ -129,6 +130,26 @@ dskit log --kind decision --stage "Analytic Approach" \
 The CLI appends structured events to `.dskit/logs/machine.jsonl` automatically.
 `dskit init --force` preserves both logs and the thought backlog.
 
+## Data-science code quality
+
+Start a persistent review with:
+
+```text
+$dskit-quality
+```
+
+or create its report for any agent with:
+
+```bash
+dskit quality --scope "Entire project"
+```
+
+Reviews are preserved under `.dskit/quality/`. They cover reproducibility, data
+integrity, leakage, analytic and statistical correctness, notebook state,
+sensitive outputs, maintainability, and verification. Python reviews include
+the project's configured `ruff check`; Ruff findings are evidence in the wider
+scientific review rather than the entire quality gate.
+
 ## CLI reference
 
 ```text
@@ -139,6 +160,7 @@ dskit status [--json]                Show all IBM stages and the next stage
 dskit context [--json]               Reconstruct cross-session context
 dskit log MESSAGE [options]          Append a project log entry
 dskit thought TEXT                   Capture a possible future improvement
+dskit quality [--scope SCOPE]        Start a code-quality review
 dskit validate [--json]              Check artifact completeness
 dskit --version                      Show the installed version
 ```
@@ -162,6 +184,7 @@ future studies.
 
 ```bash
 PYTHONPATH=src python -m unittest discover -s tests -v
+uvx ruff@0.16.2 check .
 ```
 
 ## Methodology references
