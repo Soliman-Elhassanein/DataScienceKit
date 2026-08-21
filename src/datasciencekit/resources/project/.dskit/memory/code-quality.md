@@ -52,4 +52,3 @@ Use the project's Ruff configuration when present. Otherwise use the fallback
 - Commit only after Ruff and relevant checks pass, using a concise message that
   describes the data-science change.
 - Do not amend existing commits or push unless the user explicitly requests it.
-

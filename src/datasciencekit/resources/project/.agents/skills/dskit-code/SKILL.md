@@ -45,4 +45,3 @@ Complete the requested analytical change and leave a focused, verified commit.
 
 Report the commit hash, changed structure, Ruff commands, tests, and any residual
 risks or unchecked evidence.
-
