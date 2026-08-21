@@ -21,22 +21,17 @@ and machine learning when appropriate. It does not assume a predictive model.
 - Prepared data version: [TODO]
 - Result and artifact locations: [TODO]
 
-## Run Ledger
+## Experiment Registry
 
-Append every attempted run; do not erase unfavorable or failed results.
+The canonical append-only ledger is `experiments/registry.md`. Create each
+attempt with `dskit experiment "<title>"`, complete its `EXP-NNN.md` record, and
+reference its ID here. Do not duplicate full run records in this artifact.
 
-| Run ID | Date | Method/configuration | Data version | Primary result | Status |
-|---|---|---|---|---:|---|
-| [TODO] | [TODO] | [TODO] | [TODO] | [TODO] | [TODO] |
+Experiment IDs in scope: [TODO]
 
-## Run Notes
+## Modeling Synthesis
 
-### [TODO: Run ID]
-
-- Exact procedure and parameters: [TODO]
-- Randomness/repetitions: [TODO]
-- Results with uncertainty: [TODO]
-- Guardrails and slices: [TODO]
-- Warnings, failures, and deviations: [TODO]
-- Interpretation: [TODO]
-
+- Attempts compared: [TODO]
+- Selection rationale: [TODO]
+- Failed or unfavorable attempts: [TODO]
+- Deviations from the modeling plan: [TODO]

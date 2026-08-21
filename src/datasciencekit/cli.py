@@ -32,6 +32,25 @@ ARTIFACTS = (
     "10-feedback.md",
 )
 
+STUDY_SUPPORT_FILES = (
+    "HANDOFF.md",
+    "work/plan.md",
+    "work/checks.md",
+    "experiments/registry.md",
+    "artifacts/manifest.md",
+)
+
+REQUIRED_CHECKS = {
+    "CHK-001": "Business success threshold declared",
+    "CHK-002": "Data snapshot fingerprint recorded",
+    "CHK-003": "Leakage audit completed",
+    "CHK-004": "Baseline evaluated",
+    "CHK-005": "Uncertainty reported",
+    "CHK-006": "Evaluation links experiment IDs",
+    "CHK-007": "Deployment owner named",
+    "CHK-008": "Feedback plan defined",
+}
+
 STAGE_NAMES = {
     "01-business-understanding.md": "Business Understanding",
     "02-analytic-approach.md": "Analytic Approach",
@@ -64,7 +83,9 @@ def _resource_conflicts(source_parts: tuple[str, ...], destination: Path) -> lis
         ]
 
 
-def _copy_resource_tree(source_parts: tuple[str, ...], destination: Path, force: bool) -> list[Path]:
+def _copy_resource_tree(
+    source_parts: tuple[str, ...], destination: Path, force: bool
+) -> list[Path]:
     written: list[Path] = []
     source = _resource_path(*source_parts)
     with as_file(source) as source_path:
@@ -242,10 +263,12 @@ def init_project(target: Path, force: bool = False) -> list[Path]:
         previous_config = _load_config(target)
 
     written = _copy_resource_tree(("project",), target, force)
+    if force:
+        written.extend(_install_missing_study_support(target))
     _write_json(
         config_path,
         {
-            "schema_version": 3,
+            "schema_version": 4,
             "tool_version": __version__,
             "active_study": previous_config.get("active_study"),
             "methodology": "IBM Data Science Methodology",
@@ -273,6 +296,70 @@ def _load_config(root: Path) -> dict[str, Any]:
         raise DskitError(f"cannot read {MANAGED_DIR}/config.json: {exc}") from exc
 
 
+def _active_study(root: Path) -> Path:
+    active = _load_config(root).get("active_study")
+    if not active:
+        raise DskitError('no active study; run `dskit new "STUDY TITLE"`')
+    study = root / active
+    if not study.is_dir():
+        raise DskitError(f"active study does not exist: {active}")
+    return study
+
+
+def _markdown_rows(path: Path) -> list[list[str]]:
+    if not path.is_file():
+        return []
+    rows: list[list[str]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("|") or re.match(r"^\|[-:| ]+\|$", line):
+            continue
+        cells = [cell.strip() for cell in line.strip("|").split("|")]
+        if cells and cells[0] not in {"ID", "[TODO]"}:
+            rows.append(cells)
+    return rows
+
+
+def _safe_cell(value: str) -> str:
+    return " ".join(value.strip().replace("|", "/").splitlines())
+
+
+def _replace_placeholder_row(path: Path, row: str) -> None:
+    content = path.read_text(encoding="utf-8")
+    lines = content.splitlines()
+    replaced = False
+    output: list[str] = []
+    for line in lines:
+        if not replaced and line.startswith("| [TODO]"):
+            output.append(row)
+            replaced = True
+        else:
+            output.append(line)
+    if not replaced:
+        output.append(row)
+    path.write_text("\n".join(output) + "\n", encoding="utf-8")
+
+
+def _install_missing_study_support(root: Path) -> list[Path]:
+    studies = root / MANAGED_DIR / "studies"
+    if not studies.is_dir():
+        return []
+    installed: list[Path] = []
+    relative_files = (*STUDY_SUPPORT_FILES, "experiments/EXPERIMENT-TEMPLATE.md")
+    for study in sorted(path for path in studies.iterdir() if path.is_dir()):
+        title = re.sub(r"^\d{3}-", "", study.name).replace("-", " ").title()
+        for relative in relative_files:
+            destination = study / relative
+            if destination.exists():
+                continue
+            source = _resource_path("study", *Path(relative).parts)
+            with as_file(source) as source_path:
+                content = source_path.read_text(encoding="utf-8")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_text(content.replace("{{STUDY_TITLE}}", title), encoding="utf-8")
+            installed.append(destination)
+    return installed
+
+
 def new_study(root: Path, title: str) -> Path:
     studies = root / MANAGED_DIR / "studies"
     studies.mkdir(parents=True, exist_ok=True)
@@ -290,24 +377,177 @@ def new_study(root: Path, title: str) -> Path:
     template_root = _resource_path("study")
     overrides = root / MANAGED_DIR / "templates"
     with as_file(template_root) as source_path:
-        for artifact in ARTIFACTS:
-            source = overrides / artifact if (overrides / artifact).is_file() else source_path / artifact
+        relative_files = [
+            path.relative_to(source_path) for path in source_path.rglob("*") if path.is_file()
+        ]
+        for relative in relative_files:
+            source = (
+                overrides / relative if (overrides / relative).is_file() else source_path / relative
+            )
             content = source.read_text(encoding="utf-8")
             content = content.replace("{{STUDY_TITLE}}", title.strip())
-            (study / artifact).write_text(content, encoding="utf-8")
+            destination = study / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_text(content, encoding="utf-8")
 
     config = _load_config(root)
     config["active_study"] = study.relative_to(root).as_posix()
     _write_json(root / MANAGED_DIR / "config.json", config)
-    _append_machine_event(root, "study_created", title=title.strip(), study=study.relative_to(root).as_posix())
+    _append_machine_event(
+        root, "study_created", title=title.strip(), study=study.relative_to(root).as_posix()
+    )
     append_project_log(root, f"Created and activated study: {title.strip()}", "study")
     return study
+
+
+def new_experiment(root: Path, title: str) -> Path:
+    if not title.strip():
+        raise DskitError("experiment title cannot be empty")
+    study = _active_study(root)
+    experiments = study / "experiments"
+    experiments.mkdir(parents=True, exist_ok=True)
+    numbers = [
+        int(match.group(1))
+        for path in experiments.glob("EXP-*.md")
+        if (match := re.match(r"EXP-(\d{3})\.md$", path.name))
+    ]
+    experiment_id = f"EXP-{max(numbers, default=0) + 1:03d}"
+    destination = experiments / f"{experiment_id}.md"
+    template = experiments / "EXPERIMENT-TEMPLATE.md"
+    if not template.is_file():
+        template = _resource_path("study", "experiments", "EXPERIMENT-TEMPLATE.md")
+    with as_file(template) as source_path:
+        content = source_path.read_text(encoding="utf-8")
+    content = (
+        content.replace("{{EXPERIMENT_ID}}", experiment_id)
+        .replace("{{EXPERIMENT_TITLE}}", title.strip())
+        .replace("{{CREATED_AT}}", _utc_now())
+    )
+    destination.write_text(content, encoding="utf-8")
+    registry = experiments / "registry.md"
+    if not registry.is_file():
+        raise DskitError(f"missing experiment registry: {registry.relative_to(root)}")
+    row = (
+        f"| {experiment_id} | Planned | {_safe_cell(title)} | [TODO] | Not run | "
+        f"[{experiment_id}.md]({experiment_id}.md) |"
+    )
+    _replace_placeholder_row(registry, row)
+    _append_machine_event(
+        root,
+        "experiment_created",
+        experiment_id=experiment_id,
+        record=destination.relative_to(root).as_posix(),
+    )
+    return destination
+
+
+def register_artifact(
+    root: Path,
+    path_or_uri: str,
+    kind: str,
+    source: str,
+    fingerprint: str,
+    notes: str = "—",
+) -> str:
+    required = {
+        "path or URI": path_or_uri,
+        "kind": kind,
+        "source": source,
+        "fingerprint": fingerprint,
+    }
+    if missing := [name for name, value in required.items() if not value.strip()]:
+        raise DskitError(f"artifact fields cannot be empty: {', '.join(missing)}")
+    study = _active_study(root)
+    manifest = study / "artifacts" / "manifest.md"
+    if not manifest.is_file():
+        raise DskitError(f"missing artifact manifest: {manifest.relative_to(root)}")
+    numbers = [
+        int(row[0].split("-")[1])
+        for row in _markdown_rows(manifest)
+        if row and re.fullmatch(r"ART-\d{3}", row[0])
+    ]
+    artifact_id = f"ART-{max(numbers, default=0) + 1:03d}"
+    values = (
+        artifact_id,
+        _safe_cell(kind),
+        _safe_cell(path_or_uri),
+        _safe_cell(fingerprint),
+        _safe_cell(source),
+        _utc_now(),
+        _safe_cell(notes),
+    )
+    row = f"| {' | '.join(values)} |"
+    _replace_placeholder_row(manifest, row)
+    _append_machine_event(
+        root,
+        "artifact_registered",
+        artifact_id=artifact_id,
+        path_or_uri=path_or_uri,
+        fingerprint=fingerprint,
+    )
+    return artifact_id
+
+
+def write_handoff(root: Path, summary: str, next_action: str, blockers: str = "None known") -> Path:
+    if not summary.strip() or not next_action.strip():
+        raise DskitError("handoff summary and next action cannot be empty")
+    study = _active_study(root)
+    status = project_status(root)
+    git = status["version_control"]
+    revision = _run_git(root, "rev-parse", "HEAD")
+    commit = revision.stdout.strip() if revision.returncode == 0 else "unborn branch"
+    next_stage = status["next_stage"]["name"] if status["next_stage"] else "Feedback complete"
+    completed = [item["stage"] for item in status["artifacts"].values() if item["complete"]]
+    current_stage = completed[-1] if completed else "Study setup"
+    continuity = status.get("continuity", {})
+    recent_experiment = continuity.get("latest_experiment") or "None recorded"
+    content = f"""# Handoff — {study.name}
+
+- Updated: {_utc_now()}
+- Git base commit: {commit}
+- Git branch: {git.get("branch") or "unborn branch"}
+- Working tree at handoff: {"dirty" if git.get("dirty") else "clean"}
+- Current IBM stage: {current_stage}
+- Next IBM stage: {next_stage}
+
+## Current state
+
+{summary.strip()}
+
+## Decisions and evidence
+
+See the numbered IBM artifacts, experiment records, evidence gates, and artifact manifest.
+
+## Blockers and unknowns
+
+{blockers.strip()}
+
+## Open work and checks
+
+- Open work items: {continuity.get("open_work", 0)}
+- Unpassed evidence gates: {continuity.get("open_checks", len(REQUIRED_CHECKS))}
+
+## Most recent experiment
+
+{recent_experiment}
+
+## Exact next action
+
+{next_action.strip()}
+"""
+    destination = study / "HANDOFF.md"
+    destination.write_text(content, encoding="utf-8")
+    _append_machine_event(root, "handoff_written", handoff=destination.relative_to(root).as_posix())
+    append_project_log(root, summary.strip(), "handoff", current_stage)
+    return destination
 
 
 def activate_study(root: Path, study_name: str) -> Path:
     studies = root / MANAGED_DIR / "studies"
     candidates = [path for path in studies.iterdir() if path.is_dir()] if studies.is_dir() else []
-    matches = [path for path in candidates if path.name == study_name or path.name.startswith(study_name)]
+    matches = [
+        path for path in candidates if path.name == study_name or path.name.startswith(study_name)
+    ]
     if not matches:
         raise DskitError(f"study not found: {study_name}")
     if len(matches) > 1:
@@ -345,6 +585,7 @@ def project_status(root: Path) -> dict[str, Any]:
         "quality_reviews": [],
         "version_control": version_control_status(root),
         "artifacts": {},
+        "continuity": {},
         "next_stage": None,
     }
     active = config.get("active_study")
@@ -365,6 +606,31 @@ def project_status(root: Path) -> dict[str, Any]:
                     "artifact": artifact,
                     "path": str(path),
                 }
+        plan_rows = _markdown_rows(study / "work" / "plan.md")
+        check_rows = _markdown_rows(study / "work" / "checks.md")
+        experiment_rows = _markdown_rows(study / "experiments" / "registry.md")
+        artifact_rows = _markdown_rows(study / "artifacts" / "manifest.md")
+        experiment_ids = [row[0] for row in experiment_rows if re.fullmatch(r"EXP-\d{3}", row[0])]
+        result["continuity"] = {
+            "handoff": str(study / "HANDOFF.md"),
+            "work_plan": str(study / "work" / "plan.md"),
+            "checks": str(study / "work" / "checks.md"),
+            "experiment_registry": str(study / "experiments" / "registry.md"),
+            "artifact_manifest": str(study / "artifacts" / "manifest.md"),
+            "open_work": sum(
+                len(row) > 1 and row[1].lower() not in {"done", "abandoned"} for row in plan_rows
+            ),
+            "open_checks": sum(
+                len(row) > 2 and row[2].lower() not in {"passed", "not applicable"}
+                for row in check_rows
+            ),
+            "experiment_count": len(experiment_ids),
+            "latest_experiment": experiment_ids[-1] if experiment_ids else None,
+            "registered_artifact_count": sum(
+                bool(row) and re.fullmatch(r"ART-\d{3}", row[0]) is not None
+                for row in artifact_rows
+            ),
+        }
     quality_dir = root / MANAGED_DIR / "quality"
     if quality_dir.is_dir():
         result["quality_reviews"] = [
@@ -380,7 +646,13 @@ def project_context(root: Path) -> dict[str, Any]:
     log_lines = log_path.read_text(encoding="utf-8").splitlines() if log_path.is_file() else []
     status["recent_project_log"] = log_lines[-24:]
     studies = root / MANAGED_DIR / "studies"
-    status["studies"] = sorted(path.name for path in studies.iterdir() if path.is_dir()) if studies.is_dir() else []
+    status["studies"] = (
+        sorted(path.name for path in studies.iterdir() if path.is_dir()) if studies.is_dir() else []
+    )
+    handoff = status.get("continuity", {}).get("handoff")
+    status["handoff_snapshot"] = (
+        Path(handoff).read_text(encoding="utf-8") if handoff and Path(handoff).is_file() else None
+    )
     return status
 
 
@@ -398,6 +670,80 @@ def validate_project(root: Path) -> list[str]:
             errors.append(f"missing artifact: {name}")
         elif not artifact["complete"]:
             errors.append(f"incomplete artifact: {name} ({artifact['todo_count']} TODOs)")
+    active = status["active_study"]
+    if not active:
+        return errors
+    study = root / active
+    for relative in STUDY_SUPPORT_FILES:
+        if not (study / relative).is_file():
+            errors.append(f"missing continuity file: {relative}")
+
+    plan = study / "work" / "plan.md"
+    plan_rows = _markdown_rows(plan)
+    if not plan_rows:
+        errors.append("work plan has no durable work items")
+    for row in plan_rows:
+        if len(row) < 6:
+            errors.append(f"malformed work-plan row: {row[0]}")
+        elif row[1].lower() not in {"done", "abandoned"}:
+            errors.append(f"open work item: {row[0]} ({row[1]})")
+        elif "[TODO" in row[5]:
+            errors.append(f"work item lacks evidence: {row[0]}")
+
+    check_rows = {row[0]: row for row in _markdown_rows(study / "work" / "checks.md") if row}
+    for check_id in REQUIRED_CHECKS:
+        row = check_rows.get(check_id)
+        if row is None:
+            errors.append(f"missing evidence gate: {check_id}")
+        elif len(row) < 4:
+            errors.append(f"malformed evidence gate: {check_id}")
+        elif row[2].lower() not in {"passed", "not applicable"}:
+            errors.append(f"unpassed evidence gate: {check_id} ({row[2]})")
+        elif not row[3] or "[TODO" in row[3]:
+            errors.append(f"evidence gate lacks evidence: {check_id}")
+
+    experiment_rows = _markdown_rows(study / "experiments" / "registry.md")
+    experiment_ids = [
+        row[0] for row in experiment_rows if row and re.fullmatch(r"EXP-\d{3}", row[0])
+    ]
+    if not experiment_ids:
+        errors.append("no experiments recorded")
+    for row in experiment_rows:
+        if not row or not re.fullmatch(r"EXP-\d{3}", row[0]):
+            continue
+        experiment_id = row[0]
+        if len(row) < 6:
+            errors.append(f"malformed experiment registry row: {experiment_id}")
+        elif row[1].lower() not in {"completed", "failed", "abandoned"}:
+            errors.append(f"experiment is not finished: {experiment_id} ({row[1]})")
+        elif any("[TODO" in cell for cell in row[2:]):
+            errors.append(f"experiment registry row is incomplete: {experiment_id}")
+        record = study / "experiments" / f"{experiment_id}.md"
+        if not record.is_file():
+            errors.append(f"missing experiment record: {experiment_id}")
+        elif _todo_count(record) != 0:
+            errors.append(f"incomplete experiment record: {experiment_id}")
+    evaluation = study / "08-evaluation.md"
+    evaluation_text = evaluation.read_text(encoding="utf-8") if evaluation.is_file() else ""
+    if experiment_ids and not any(
+        experiment_id in evaluation_text for experiment_id in experiment_ids
+    ):
+        errors.append("evaluation does not link a recorded experiment ID")
+
+    manifest_rows = [
+        row
+        for row in _markdown_rows(study / "artifacts" / "manifest.md")
+        if row and re.fullmatch(r"ART-\d{3}", row[0])
+    ]
+    if not manifest_rows:
+        errors.append("no artifacts registered with provenance")
+    for row in manifest_rows:
+        if len(row) < 7 or any(not row[index] or "[TODO" in row[index] for index in (2, 3, 4)):
+            errors.append(f"artifact lacks path, fingerprint, or source: {row[0]}")
+
+    handoff = study / "HANDOFF.md"
+    if handoff.is_file() and _todo_count(handoff) != 0:
+        errors.append("handoff snapshot is incomplete")
     return errors
 
 
@@ -416,6 +762,15 @@ def _print_status(status: dict[str, Any]) -> None:
         print("Version control: REQUIRED — Git repository not found")
     if status["next_stage"]:
         print(f"Next stage: {status['next_stage']['name']}")
+    continuity = status.get("continuity", {})
+    if continuity:
+        print(
+            "Continuity: "
+            f"{continuity['open_work']} open work, "
+            f"{continuity['open_checks']} open gates, "
+            f"{continuity['experiment_count']} experiments, "
+            f"{continuity['registered_artifact_count']} registered artifacts"
+        )
     for artifact in status["artifacts"].values():
         if artifact["todo_count"] == -1:
             marker = "missing"
@@ -436,7 +791,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     init = subparsers.add_parser("init", help="initialize a project and install agent skills")
     init.add_argument("path", nargs="?", default=".")
-    init.add_argument("--force", action="store_true", help="replace only DataScienceKit-managed files")
+    init.add_argument(
+        "--force", action="store_true", help="replace only DataScienceKit-managed files"
+    )
 
     new = subparsers.add_parser("new", help="create and activate a study")
     new.add_argument("title")
@@ -447,20 +804,41 @@ def build_parser() -> argparse.ArgumentParser:
     status = subparsers.add_parser("status", help="show workflow artifact status")
     status.add_argument("--json", action="store_true", dest="as_json")
 
-    context = subparsers.add_parser("context", help="show durable context for a new agent or session")
+    context = subparsers.add_parser(
+        "context", help="show durable context for a new agent or session"
+    )
     context.add_argument("--json", action="store_true", dest="as_json")
 
     log = subparsers.add_parser("log", help="append a human-readable project log entry")
     log.add_argument("message")
-    log.add_argument("--kind", default="progress", choices=("decision", "progress", "finding", "handoff"))
+    log.add_argument(
+        "--kind", default="progress", choices=("decision", "progress", "finding", "handoff")
+    )
     log.add_argument("--stage")
 
-    thought = subparsers.add_parser("thought", help="capture a possible future improvement without committing to it")
+    thought = subparsers.add_parser(
+        "thought", help="capture a possible future improvement without committing to it"
+    )
     thought.add_argument("text")
 
     quality = subparsers.add_parser("quality", help="start a data-science code-quality review")
     quality.add_argument("--scope", default="Entire data-science project")
     quality.add_argument("--json", action="store_true", dest="as_json")
+
+    experiment = subparsers.add_parser("experiment", help="create a durable experiment record")
+    experiment.add_argument("title")
+
+    artifact = subparsers.add_parser("artifact", help="register an output and its provenance")
+    artifact.add_argument("path_or_uri")
+    artifact.add_argument("--kind", required=True)
+    artifact.add_argument("--source", required=True)
+    artifact.add_argument("--fingerprint", required=True)
+    artifact.add_argument("--notes", default="—")
+
+    handoff = subparsers.add_parser("handoff", help="write the active study handoff snapshot")
+    handoff.add_argument("--summary", required=True)
+    handoff.add_argument("--next", required=True, dest="next_action")
+    handoff.add_argument("--blockers", default="None known")
 
     validate = subparsers.add_parser("validate", help="check that required artifacts are complete")
     validate.add_argument("--json", action="store_true", dest="as_json")
@@ -517,6 +895,25 @@ def run(argv: Iterable[str] | None = None) -> int:
             print(json.dumps(payload, indent=2))
         else:
             print(f"Quality review created: {report.relative_to(root).as_posix()}")
+        return 0
+    if args.command == "experiment":
+        record = new_experiment(root, args.title)
+        print(f"Experiment created: {record.relative_to(root).as_posix()}")
+        return 0
+    if args.command == "artifact":
+        artifact_id = register_artifact(
+            root,
+            args.path_or_uri,
+            args.kind,
+            args.source,
+            args.fingerprint,
+            args.notes,
+        )
+        print(f"Registered {artifact_id} in the active study artifact manifest.")
+        return 0
+    if args.command == "handoff":
+        handoff = write_handoff(root, args.summary, args.next_action, args.blockers)
+        print(f"Handoff written: {handoff.relative_to(root).as_posix()}")
         return 0
     if args.command == "validate":
         errors = validate_project(root)

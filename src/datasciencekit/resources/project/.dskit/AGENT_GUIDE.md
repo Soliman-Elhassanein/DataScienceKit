@@ -15,11 +15,15 @@ work when `dskit context --json` reports that no Git repository exists.
    changes; never absorb them into the agent's commit.
 3. Read `.dskit/memory/principles.md`.
 4. Read `.dskit/memory/code-quality.md` before changing analysis code.
-5. Read completed active-study artifacts in numeric order.
-6. Read the recent entries in `.dskit/logs/project.md`.
-7. Review relevant entries in `.dskit/thoughts/backlog.md` without treating
+5. Read the active study's `HANDOFF.md`, `work/plan.md`, `work/checks.md`,
+   `experiments/registry.md`, and `artifacts/manifest.md`.
+6. Read completed active-study artifacts in numeric order and inspect the
+   records for any experiments relevant to the next action.
+7. Read the recent entries in `.dskit/logs/project.md`.
+8. Review relevant entries in `.dskit/thoughts/backlog.md` without treating
    proposed thoughts as approved work.
-8. Continue from `next_stage` unless evidence requires revisiting an earlier IBM
+9. Continue from the handoff's exact next action and work plan unless evidence
+   requires revisiting an earlier IBM
    stage. Record that iteration explicitly.
 
 ## While Working
@@ -29,22 +33,30 @@ work when `dskit context --json` reports that no Git repository exists.
 - Never erase unfavorable modeling attempts or prior decisions.
 - Keep raw sensitive values out of methodology documents and logs.
 - Do not alter success criteria after observing evaluation results.
+- Update `work/plan.md` as work changes state and `work/checks.md` only when its
+  Evidence cell points to durable proof.
+- Create every analytical attempt with `dskit experiment`; fill its record and
+  registry row whether it succeeds, fails, or is abandoned.
+- Register important datasets and outputs with `dskit artifact`, using an
+  immutable content fingerprint or trustworthy version identifier.
 
 ## End or Handoff
 
 1. Leave the current stage artifact internally consistent, even if incomplete.
-2. Record findings, decisions, blockers, and the exact next action:
+2. Update the work plan, evidence gates, experiment registry and records, and
+   artifact manifest so their state agrees with the numbered IBM artifacts.
+3. Record findings, decisions, blockers, and the exact next action:
 
-   `dskit log --kind handoff --stage "<IBM stage>" "<summary>"`
+   `dskit handoff --summary "<state>" --next "<exact action>" --blockers "<blockers>"`
 
-3. Capture non-approved possibilities separately:
+4. Capture non-approved possibilities separately:
 
    `dskit thought "<idea and motivation>"`
 
-4. Run `dskit status` and report the active study and next stage.
-5. Stage only files changed for the current task, including its methodology and
+5. Run `dskit status` and report the active study and next stage.
+6. Stage only files changed for the current task, including its methodology and
    log updates. Review `git diff --cached`, then create a focused commit.
-6. Report the commit hash. If no files changed, explicitly report that no commit
+7. Report the commit hash. If no files changed, explicitly report that no commit
    was needed. Never amend or push unless the user explicitly requests it.
 
 Do not hand off uncommitted DataScienceKit work. If a required check fails, do

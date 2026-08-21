@@ -15,7 +15,8 @@ Thoughts are proposals, not approved scope or established evidence.
 4. Mark a thought as accepted, rejected, superseded, or still proposed by
    editing its entry. Never delete the original idea or its decision history.
 5. An accepted thought is not automatically executed. Record the approval and
-   affected stage in the project log, then revise that stage transparently.
+   affected stage in the project log, add a work-plan row, then revise that stage
+   transparently.
 
 Do not use the thought backlog to bypass success criteria, final-partition
 protections, data governance, or stakeholder approval.

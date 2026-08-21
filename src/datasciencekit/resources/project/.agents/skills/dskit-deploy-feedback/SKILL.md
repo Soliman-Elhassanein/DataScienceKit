@@ -13,8 +13,9 @@ research, report, or operating process. Implementation mechanisms are outside
 this workflow.
 
 1. Run `dskit context --json`; verify Git is active and read
-   `.dskit/AGENT_GUIDE.md`, principles, all completed active-study stages, recent
-   project log entries, and relevant thoughts.
+   `.dskit/AGENT_GUIDE.md`, principles, handoff, work plan, evidence gates,
+   experiment registry, artifact manifest, all completed active-study stages,
+   recent project log entries, and relevant thoughts.
 2. Do not recommend adoption when evaluation has a failed blocking gate.
 3. Fill `09-deployment.md`: result, recipients, intended/prohibited use,
    versioned deliverables, interpretation, caveats, human approval, fallback,
@@ -26,5 +27,6 @@ this workflow.
    assumptions, lessons, and next review date.
 6. Decide whether to continue, revise, pause, or retire. If revising, name the
    IBM stage to revisit rather than silently changing completed evidence.
-7. Run `dskit validate` and append the decision with `dskit log --kind decision
-   --stage "Feedback" "<outcome and iteration decision>"`.
+7. Update `CHK-007` and `CHK-008`, close or carry forward every work item, write
+   the handoff, run `dskit validate`, and append the iteration decision to the
+   project log.

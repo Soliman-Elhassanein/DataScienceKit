@@ -11,8 +11,8 @@ description: >
 Work only on IBM stages 3 and 4.
 
 1. Run `dskit context --json`; verify Git is active and read
-   `.dskit/AGENT_GUIDE.md`, principles, the active study's stages 1–2, recent
-   project log entries, and relevant thoughts.
+   `.dskit/AGENT_GUIDE.md`, principles, handoff, work plan, evidence gates, the
+   active study's stages 1–2, recent project log entries, and relevant thoughts.
 2. Fill `03-data-requirements.md` before collection. Specify concepts,
    population, unit, outcome, timing, history, volume, relationships, formats,
    quality thresholds, access, permitted purpose, and infeasibility conditions.
@@ -23,8 +23,9 @@ Work only on IBM stages 3 and 4.
    failures, exclusions, and coverage against requirements.
 5. Stop if authorization, permitted purpose, outcome timing, or identity rules
    are too unclear to support valid collection.
-6. Record the sufficiency decision and append a handoff with `dskit log --kind
-   handoff --stage "Data Collection" "<evidence, gaps, and next action>"`.
+6. Register collected snapshots with `dskit artifact`, update the work plan and
+   `CHK-002` evidence, then record the sufficiency decision and exact next action
+   with `dskit handoff`.
 
 If collection code is created or changed, follow `.dskit/memory/code-quality.md`:
 keep source definitions and validation reusable, run Ruff and relevant checks,

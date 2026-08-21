@@ -11,16 +11,20 @@ from pathlib import Path
 
 from datasciencekit.cli import (
     ARTIFACTS,
+    STUDY_SUPPORT_FILES,
     activate_study,
     append_project_log,
     append_thought,
     init_project,
     main,
+    new_experiment,
     new_quality_review,
     new_study,
     project_context,
     project_status,
+    register_artifact,
     validate_project,
+    write_handoff,
 )
 
 
@@ -67,7 +71,9 @@ class DataScienceKitCliTests(unittest.TestCase):
         study = new_study(self.root, "Customer Churn")
 
         self.assertEqual("001-customer-churn", study.name)
-        self.assertEqual(set(ARTIFACTS), {path.name for path in study.iterdir()})
+        self.assertTrue(set(ARTIFACTS).issubset({path.name for path in study.iterdir()}))
+        for relative in STUDY_SUPPORT_FILES:
+            self.assertTrue((study / relative).is_file())
         first = study / "01-business-understanding.md"
         self.assertIn("Customer Churn", first.read_text(encoding="utf-8"))
         status = project_status(self.root)
@@ -81,7 +87,10 @@ class DataScienceKitCliTests(unittest.TestCase):
 
         study = new_study(self.root, "Forecast Demand")
 
-        self.assertEqual("# Forecast Demand custom\n", override.parent.parent.joinpath("studies", study.name, override.name).read_text())
+        self.assertEqual(
+            "# Forecast Demand custom\n",
+            override.parent.parent.joinpath("studies", study.name, override.name).read_text(),
+        )
 
     def test_status_json_works_from_nested_directory(self) -> None:
         init_project(self.root)
@@ -103,10 +112,14 @@ class DataScienceKitCliTests(unittest.TestCase):
         self.assertEqual(str(self.root.resolve()), payload["project_root"])
         self.assertIn("01-business-understanding.md", payload["artifacts"])
         self.assertTrue(payload["version_control"]["repository"])
+        self.assertEqual(0, payload["continuity"]["experiment_count"])
+        self.assertIn("HANDOFF.md", payload["continuity"]["handoff"])
 
     def test_status_is_read_only_for_a_clean_git_repository(self) -> None:
         init_project(self.root)
-        subprocess.run(["git", "-C", str(self.root), "config", "user.name", "Test Agent"], check=True)
+        subprocess.run(
+            ["git", "-C", str(self.root), "config", "user.name", "Test Agent"], check=True
+        )
         subprocess.run(
             ["git", "-C", str(self.root), "config", "user.email", "agent@example.invalid"],
             check=True,
@@ -137,13 +150,18 @@ class DataScienceKitCliTests(unittest.TestCase):
     def test_logs_thoughts_and_context_are_durable(self) -> None:
         init_project(self.root)
         new_study(self.root, "Retention")
-        append_project_log(self.root, "Outcome definition approved", "decision", "Business Understanding")
+        append_project_log(
+            self.root, "Outcome definition approved", "decision", "Business Understanding"
+        )
         thought_id = append_thought(self.root, "Consider survival analysis")
 
         context = project_context(self.root)
         project_log = (self.root / ".dskit/logs/project.md").read_text()
         thoughts = (self.root / ".dskit/thoughts/backlog.md").read_text()
-        machine_events = [json.loads(line)["event"] for line in (self.root / ".dskit/logs/machine.jsonl").read_text().splitlines()]
+        machine_events = [
+            json.loads(line)["event"]
+            for line in (self.root / ".dskit/logs/machine.jsonl").read_text().splitlines()
+        ]
 
         self.assertIn("Outcome definition approved", project_log)
         self.assertIn(thought_id, thoughts)
@@ -151,7 +169,42 @@ class DataScienceKitCliTests(unittest.TestCase):
         self.assertIn("project_log_appended", machine_events)
         self.assertIn("thought_captured", machine_events)
         self.assertEqual(["001-retention"], context["studies"])
-        self.assertTrue(any("Outcome definition approved" in line for line in context["recent_project_log"]))
+        self.assertTrue(
+            any("Outcome definition approved" in line for line in context["recent_project_log"])
+        )
+        self.assertIn("Exact next action", context["handoff_snapshot"])
+
+    def test_experiment_artifact_and_handoff_are_durable_and_numbered(self) -> None:
+        init_project(self.root)
+        study = new_study(self.root, "Retention")
+
+        first = new_experiment(self.root, "Frozen-split baseline")
+        second = new_experiment(self.root, "Temporal robustness")
+        artifact_id = register_artifact(
+            self.root,
+            "results/baseline.parquet",
+            "prepared-data",
+            "raw/snapshot-v3",
+            "sha256:abc123",
+        )
+        handoff = write_handoff(
+            self.root,
+            "Two experiments planned.",
+            "Complete EXP-001.",
+            "Outcome labels pending.",
+        )
+
+        self.assertEqual("EXP-001.md", first.name)
+        self.assertEqual("EXP-002.md", second.name)
+        registry = (study / "experiments/registry.md").read_text()
+        self.assertIn("EXP-001", registry)
+        self.assertIn("EXP-002", registry)
+        self.assertEqual("ART-001", artifact_id)
+        self.assertIn("sha256:abc123", (study / "artifacts/manifest.md").read_text())
+        self.assertIn("Complete EXP-001.", handoff.read_text())
+        status = project_status(self.root)
+        self.assertEqual(2, status["continuity"]["experiment_count"])
+        self.assertEqual(1, status["continuity"]["registered_artifact_count"])
 
     def test_quality_review_is_timestamped_tracked_and_uses_scope(self) -> None:
         init_project(self.root)
@@ -176,7 +229,9 @@ class DataScienceKitCliTests(unittest.TestCase):
         activated = activate_study(self.root, "001")
 
         self.assertEqual(first, activated)
-        self.assertEqual(".dskit/studies/001-first-study", project_status(self.root)["active_study"])
+        self.assertEqual(
+            ".dskit/studies/001-first-study", project_status(self.root)["active_study"]
+        )
 
     def test_force_reinitialization_preserves_logs_and_thoughts(self) -> None:
         init_project(self.root)
@@ -191,7 +246,25 @@ class DataScienceKitCliTests(unittest.TestCase):
         self.assertIn("Keep this decision", (self.root / ".dskit/logs/project.md").read_text())
         self.assertIn(thought_id, (self.root / ".dskit/thoughts/backlog.md").read_text())
         self.assertEqual("# Custom principles\n", principles.read_text())
-        self.assertEqual(study.relative_to(self.root).as_posix(), project_status(self.root)["active_study"])
+        self.assertEqual(
+            study.relative_to(self.root).as_posix(), project_status(self.root)["active_study"]
+        )
+
+    def test_force_reinitialization_backfills_missing_continuity_without_overwrite(self) -> None:
+        init_project(self.root)
+        study = new_study(self.root, "Legacy Study")
+        business = study / "01-business-understanding.md"
+        business.write_text("# Preserved evidence\n", encoding="utf-8")
+        for relative in STUDY_SUPPORT_FILES:
+            (study / relative).unlink()
+        (study / "experiments/EXPERIMENT-TEMPLATE.md").unlink()
+
+        init_project(self.root, force=True)
+
+        self.assertEqual("# Preserved evidence\n", business.read_text())
+        for relative in STUDY_SUPPORT_FILES:
+            self.assertTrue((study / relative).is_file())
+        self.assertTrue((study / "experiments/EXPERIMENT-TEMPLATE.md").is_file())
 
     def test_validate_reports_incomplete_then_passes_when_placeholders_removed(self) -> None:
         init_project(self.root)
@@ -207,6 +280,40 @@ class DataScienceKitCliTests(unittest.TestCase):
             for name in ARTIFACTS:
                 path = study / name
                 path.write_text(path.read_text().replace("[TODO", "[DONE"))
+
+            plan = study / "work/plan.md"
+            plan.write_text(
+                plan.read_text().replace("| Ready |", "| Done |").replace("[TODO]", "Evidence"),
+                encoding="utf-8",
+            )
+            checks = study / "work/checks.md"
+            checks.write_text(
+                checks.read_text().replace("Pending", "Passed").replace("[TODO]", "IBM artifact"),
+                encoding="utf-8",
+            )
+            experiment = new_experiment(self.root, "Baseline")
+            experiment.write_text(
+                experiment.read_text()
+                .replace("- Status: Planned", "- Status: Completed")
+                .replace("[TODO]", "Recorded evidence")
+            )
+            registry = study / "experiments/registry.md"
+            registry.write_text(
+                registry.read_text()
+                .replace("| Planned |", "| Completed |")
+                .replace("[TODO]", "Primary measure")
+                .replace("| Not run |", "| Passed baseline |")
+            )
+            evaluation = study / "08-evaluation.md"
+            evaluation.write_text(evaluation.read_text() + "\nExperiment evidence: EXP-001\n")
+            register_artifact(
+                self.root,
+                "results/evaluation.json",
+                "evaluation",
+                "EXP-001",
+                "sha256:def456",
+            )
+            write_handoff(self.root, "Study evidence complete.", "Review feedback outcomes.")
 
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(0, main(["validate"]))

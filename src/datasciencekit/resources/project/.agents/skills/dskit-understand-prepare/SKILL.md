@@ -11,8 +11,9 @@ description: >
 Work only on IBM stages 5 and 6.
 
 1. Run `dskit context --json`; verify Git is active and read
-   `.dskit/AGENT_GUIDE.md`, then reconstruct the study from principles, stages
-   1–4, recent project log entries, and relevant thoughts.
+   `.dskit/AGENT_GUIDE.md`, then reconstruct the study from principles, handoff,
+   work plan, evidence gates, artifact manifest, stages 1–4, recent project log
+   entries, and relevant thoughts.
 2. Produce reproducible aggregate evidence about structure, distributions,
    missingness, duplicates, invalid values, time behavior, relationships,
    segment differences, sampling bias, measurement bias, and outcome quality.
@@ -24,9 +25,9 @@ Work only on IBM stages 5 and 6.
 5. Fill `06-data-preparation.md` with every selection, exclusion, cleaning,
    integration, derivation, imbalance treatment, partition rule, and resulting
    data version. Fit learned transformations only within development data.
-6. Keep the final evaluation partition sealed. Log the prepared snapshot,
-   limitations, and next action with `dskit log --kind handoff --stage "Data
-   Preparation" "<summary>"`.
+6. Keep the final evaluation partition sealed. Register the prepared snapshot,
+   update the work plan plus `CHK-002` and `CHK-003` evidence, and write the
+   limitations and exact next action with `dskit handoff`.
 
 When writing preparation or exploration code, follow
 `.dskit/memory/code-quality.md`: centralize shared data rules, keep notebooks free

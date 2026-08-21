@@ -9,8 +9,9 @@ Complete the requested analytical change and leave a focused, verified commit.
 
 1. Run `dskit context --json`; verify Git is active, then read
    `.dskit/AGENT_GUIDE.md`, project principles, `.dskit/memory/code-quality.md`,
-   relevant IBM-stage artifacts, and recent project log entries. Treat durable
-   files as context, not conversation memory.
+   active handoff, work plan, evidence gates, experiment registry, artifact
+   manifest, relevant IBM-stage artifacts, and recent project log entries.
+   Treat durable files as context, not conversation memory.
 2. Run `git status --short` before editing. Identify pre-existing changes and do
    not modify, stage, or commit unrelated user work. Stop if Git is unavailable
    or the project is not a repository; `dskit init` is responsible for setup.
@@ -37,9 +38,11 @@ Complete the requested analytical change and leave a focused, verified commit.
 8. Run the narrowest relevant tests/checks, then the broader project checks when
    proportionate. Reproduce the affected analysis from a clean session when
    practical. Do not claim success for checks that were not run.
-9. Update the relevant IBM artifact and append check evidence with `dskit log
+9. Update the relevant IBM artifact, work-plan row, evidence gates, experiment
+   record, and artifact manifest as applicable. Append check evidence with `dskit log
    --kind progress --stage "<stage>" "<change, Ruff result, tests, and risks>"`.
-10. Stage only your task files. Review `git diff --cached`, check again for
+10. Refresh `HANDOFF.md` with `dskit handoff`, then stage only your task files.
+    Review `git diff --cached`, check again for
     secrets/data/generated output, and commit with a concise data-science-focused
     message. Do not commit when required checks fail. Do not amend or push unless
     explicitly requested.

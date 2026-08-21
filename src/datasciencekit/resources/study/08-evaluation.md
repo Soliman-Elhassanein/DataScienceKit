@@ -4,9 +4,11 @@ Status: Draft
 
 ## Results Against Objectives
 
-| Candidate | Primary measure | Uncertainty | Baseline delta | Guardrails | Verdict |
-|---|---:|---|---:|---|---|
-| [TODO] | [TODO] | [TODO] | [TODO] | [TODO] | [TODO] |
+Every candidate must reference its `EXP-NNN` record.
+
+| Experiment ID | Candidate | Primary measure | Uncertainty | Baseline delta | Guardrails | Verdict |
+|---|---|---:|---|---:|---|---|
+| [TODO] | [TODO] | [TODO] | [TODO] | [TODO] | [TODO] | [TODO] |
 
 ## Business Evaluation
 
@@ -37,4 +39,3 @@ Status: Draft
 - Evidence strength: [TODO]
 - Conditions or required follow-up: [TODO]
 - Continue to deployment, revisit an earlier stage, or stop: [TODO]
-

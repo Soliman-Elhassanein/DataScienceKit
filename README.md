@@ -71,6 +71,11 @@ dskit context
 Codex users also receive project-local skills under `.agents/skills/`. Start a
 fresh session after initialization so they are discovered.
 
+To upgrade an existing DataScienceKit project, install the new CLI and run
+`dskit init --force`. It updates managed instructions and backfills missing
+continuity files without overwriting existing studies, logs, thoughts, memory,
+quality reports, or project-local templates.
+
 ## IBM workflow commands
 
 Start with project-wide scientific and governance rules:
@@ -133,12 +138,42 @@ All continuity is file-backed:
 ├── logs/machine.jsonl         Structured CLI event history
 ├── quality/ruff.toml          Fallback Ruff configuration
 ├── thoughts/backlog.md        Possible work, not approved scope
-└── studies/NNN-study-name/    Ten IBM methodology artifacts
+└── studies/NNN-study-name/
+    ├── HANDOFF.md             Exact cross-session restart point
+    ├── work/                  Work plan and semantic evidence gates
+    ├── experiments/           Append-only registry and EXP-NNN records
+    ├── artifacts/manifest.md  Output lineage and fingerprints
+    └── 01…10-*.md             Ten IBM methodology artifacts
 ```
 
 Use `$dskit-resume` in Codex or `dskit context` with any agent to reconstruct the
 active study, completed stages, next stage, recent decisions, and available
 studies without relying on conversation memory.
+
+Each study keeps planning, execution, evidence, and handoff state separate. The
+work plan says what should happen; experiment records say exactly what happened;
+the artifact manifest identifies the inputs and outputs; evidence gates say what
+has actually been checked; and `HANDOFF.md` gives the next agent one exact action.
+
+Create an analytical attempt before running it:
+
+```bash
+dskit experiment "Regularized baseline with frozen split"
+```
+
+Register important inputs and outputs with provenance:
+
+```bash
+dskit artifact results/baseline.parquet --kind prepared-data \
+  --source raw/customer-snapshot-v3 --fingerprint sha256:0123abcd
+```
+
+End a coherent work session with a regenerated snapshot:
+
+```bash
+dskit handoff --summary "Baseline evaluated; uncertainty remains wide" \
+  --next "Run the predeclared temporal robustness check" --blockers "None"
+```
 
 ## Mandatory version control
 
@@ -205,7 +240,10 @@ dskit context [--json]               Reconstruct cross-session context
 dskit log MESSAGE [options]          Append a project log entry
 dskit thought TEXT                   Capture a possible future improvement
 dskit quality [--scope SCOPE]        Start a code-quality review
-dskit validate [--json]              Check artifact completeness
+dskit experiment "TITLE"             Create the next EXP-NNN record
+dskit artifact PATH [options]        Register lineage and fingerprint
+dskit handoff --summary ... --next ... Write the restart snapshot
+dskit validate [--json]              Check structural and semantic evidence
 dskit --version                      Show the installed version
 ```
 
@@ -219,6 +257,9 @@ future studies.
 - Leakage is audited before preparation and final evaluation.
 - Final evaluation data remains sealed during method selection.
 - All modeling attempts—including failures—remain in an append-only ledger.
+- Completion gates require evidence links; changing a status alone does not pass.
+- Evaluation must link to a complete experiment record, and important outputs
+  must have a source plus immutable fingerprint.
 - Post-hoc findings are labeled exploratory.
 - Association is not presented as causation without an identification strategy.
 - Deployment requires a passed evaluation gate and explicit ownership.
