@@ -1,0 +1,29 @@
+---
+name: dskit-model-evaluate
+description: >
+  Complete IBM Data Science Methodology stages 7–8: Modeling and Evaluation. Use
+  to run statistical, forecasting, optimization, experimental, or machine-learning
+  analyses and judge them against predeclared business and analytic criteria.
+---
+
+# Modeling and Evaluation
+
+Work on IBM stages 7 and 8 while keeping planning distinct from judgment.
+
+1. Run `dskit context --json`; read principles, stages 1–6, recent project log
+   entries, and relevant thoughts. Do not rely on remembered session context.
+2. Before observing final results, fill the Modeling Plan in `07-modeling.md`:
+   baseline, candidate methods, fixed measures, acceptance rules, search budget,
+   repetitions, stopping rule, and reproducibility record.
+3. Run only approved analyses. Append every attempt to the run ledger, including
+   failures and unfavorable results. Record exact procedure, parameters, data
+   version, randomness, results, uncertainty, warnings, and deviations.
+4. Do not redefine the primary measure, slice, hypothesis, or threshold after
+   observing results. Mark any post-hoc finding exploratory.
+5. Fill `08-evaluation.md`. Compare with the declared baseline and business
+   threshold; assess uncertainty, robustness, errors, subgroups, fairness,
+   generalizability, and intended-use fitness. Missing evidence is not a pass.
+6. Distinguish association from causation. Recommend deployment, revision of a
+   named earlier IBM stage, more evidence, or stopping.
+7. Append a handoff with `dskit log --kind handoff --stage "Evaluation"
+   "<result, evidence strength, decision, and next action>"`.

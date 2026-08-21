@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "datasciencekit"
+version = "0.2.0"
+description = "An artifact-driven workflow for reproducible data-science projects"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "DataScienceKit contributors" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = []
+
+[project.scripts]
+dskit = "datasciencekit.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/datasciencekit"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
