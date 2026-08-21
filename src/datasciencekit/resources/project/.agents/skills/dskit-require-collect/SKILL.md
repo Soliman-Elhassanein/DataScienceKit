@@ -25,4 +25,8 @@ Work only on IBM stages 3 and 4.
 6. Record the sufficiency decision and append a handoff with `dskit log --kind
    handoff --stage "Data Collection" "<evidence, gaps, and next action>"`.
 
+If collection code is created or changed, follow `.dskit/memory/code-quality.md`:
+keep source definitions and validation reusable, run Ruff and relevant checks,
+review the staged diff, and create a focused commit after checks pass.
+
 Do not perform data preparation or modeling.

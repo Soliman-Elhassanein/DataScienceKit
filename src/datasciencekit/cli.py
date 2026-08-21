@@ -69,6 +69,7 @@ def _copy_resource_tree(source_parts: tuple[str, ...], destination: Path, force:
             durable_state = relative.parts[:2] in {
                 (".dskit", "logs"),
                 (".dskit", "memory"),
+                (".dskit", "quality"),
                 (".dskit", "templates"),
                 (".dskit", "thoughts"),
             }

@@ -83,12 +83,37 @@ $dskit-require-collect
 $dskit-understand-prepare
 $dskit-model-evaluate
 $dskit-deploy-feedback
+$dskit-code
 $dskit-quality
 ```
 
 Each group produces two numbered IBM methodology artifacts. Modeling includes
 descriptive, diagnostic, forecasting, causal, experimental, optimization, and
 statistical work; it does not assume every study uses machine learning.
+
+## Writing analysis code
+
+Use `$dskit-code` whenever the agent implements data collection, preparation,
+exploration, modeling, evaluation, or reporting code. The skill enforces this
+loop:
+
+```text
+inspect state → structure the change → practical DRY → self-review
+→ Ruff lint and format checks → relevant tests → staged-diff review → commit
+```
+
+The durable standard lives at `.dskit/memory/code-quality.md`, with a fallback
+Ruff configuration at `.dskit/quality/ruff.toml`.
+
+DRY is applied to definitions that must remain scientifically consistent:
+outcomes, populations, partitions, transformations, features, measures,
+thresholds, and domain constants. It does not require abstractions for one-off
+exploration or superficial similarity.
+
+The agent inspects existing changes before editing, stages only files belonging
+to its task, excludes credentials and raw/private data, reviews the staged diff,
+and commits only after required checks pass. It reports the commit hash and does
+not push unless explicitly requested.
 
 ## Continuity across agents and sessions
 
@@ -99,8 +124,10 @@ All continuity is file-backed:
 ├── AGENT_GUIDE.md             Generic working protocol
 ├── config.json                Active study and methodology version
 ├── memory/principles.md       Project-wide scientific rules
+├── memory/code-quality.md     Analysis coding and commit standard
 ├── logs/project.md            Human-readable decisions and handoffs
 ├── logs/machine.jsonl         Structured CLI event history
+├── quality/ruff.toml          Fallback Ruff configuration
 ├── thoughts/backlog.md        Possible work, not approved scope
 └── studies/NNN-study-name/    Ten IBM methodology artifacts
 ```

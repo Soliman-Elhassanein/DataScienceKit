@@ -24,7 +24,8 @@ Assess whether analysis code can support trustworthy and reproducible findings.
 5. Trace actual data paths and error paths. Check reproducibility, randomness,
    raw-data immutability, joins, missingness, partitions, transformation fitting,
    outcome timing, leakage, measures, uncertainty, repeated comparisons,
-   notebook execution state, hard-coded values, duplicated domain rules, silent
+   notebook execution state, hard-coded values, duplicated domain rules, DRY
+   violations that can make results inconsistent, silent
    coercion, edge cases, and sensitive output.
 6. Fill the report with evidence-backed strengths and findings. Every finding
    must cite a path and line, notebook cell, query, or generated output. Rank by

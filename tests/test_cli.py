@@ -36,13 +36,15 @@ class DataScienceKitCliTests(unittest.TestCase):
         self.assertTrue((self.root / ".dskit/config.json").is_file())
         self.assertTrue((self.root / ".dskit/AGENT_GUIDE.md").is_file())
         self.assertTrue((self.root / ".dskit/memory/principles.md").is_file())
+        self.assertTrue((self.root / ".dskit/memory/code-quality.md").is_file())
+        self.assertTrue((self.root / ".dskit/quality/ruff.toml").is_file())
         self.assertTrue((self.root / ".dskit/logs/project.md").is_file())
         self.assertTrue((self.root / ".dskit/thoughts/backlog.md").is_file())
         skills = sorted((self.root / ".agents/skills").glob("dskit-*/SKILL.md"))
-        self.assertEqual(9, len(skills))
+        self.assertEqual(10, len(skills))
         event = json.loads((self.root / ".dskit/logs/machine.jsonl").read_text().splitlines()[0])
         self.assertEqual("project_initialized", event["event"])
-        self.assertGreaterEqual(len(written), 15)
+        self.assertGreaterEqual(len(written), 17)
 
     def test_init_preflights_conflicts_without_partial_overwrite(self) -> None:
         conflict = self.root / ".agents/skills/dskit-understand/SKILL.md"

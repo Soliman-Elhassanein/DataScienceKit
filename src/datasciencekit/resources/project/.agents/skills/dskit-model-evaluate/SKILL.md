@@ -27,3 +27,8 @@ Work on IBM stages 7 and 8 while keeping planning distinct from judgment.
    named earlier IBM stage, more evidence, or stopping.
 7. Append a handoff with `dskit log --kind handoff --stage "Evaluation"
    "<result, evidence strength, decision, and next action>"`.
+
+Any analysis or modeling code must follow `.dskit/memory/code-quality.md`.
+Centralize measures and partitions, use practical DRY, run Ruff and relevant
+checks, review the staged diff, and create a focused commit only after checks
+pass. Do not commit failed or unverified analytical code as complete work.

@@ -7,11 +7,12 @@ Durable files are authoritative; conversation memory is not.
 
 1. Run `dskit context --json` from anywhere inside the project.
 2. Read `.dskit/memory/principles.md`.
-3. Read completed active-study artifacts in numeric order.
-4. Read the recent entries in `.dskit/logs/project.md`.
-5. Review relevant entries in `.dskit/thoughts/backlog.md` without treating
+3. Read `.dskit/memory/code-quality.md` before changing analysis code.
+4. Read completed active-study artifacts in numeric order.
+5. Read the recent entries in `.dskit/logs/project.md`.
+6. Review relevant entries in `.dskit/thoughts/backlog.md` without treating
    proposed thoughts as approved work.
-6. Continue from `next_stage` unless evidence requires revisiting an earlier IBM
+7. Continue from `next_stage` unless evidence requires revisiting an earlier IBM
    stage. Record that iteration explicitly.
 
 ## While Working
@@ -41,3 +42,13 @@ For analysis-code review, create a durable report with `dskit quality`. Inspect
 validity and reproducibility before style. For Python files and notebooks, run
 the project's configured Ruff check and record the exact command and result.
 Keep prior reports under `.dskit/quality/` for comparison across sessions.
+
+## When Writing Analysis Code
+
+Follow `.dskit/memory/code-quality.md`. Preserve the existing coherent
+organization, apply DRY to definitions whose inconsistency would change results,
+and add focused verification. For Python and Jupyter changes, Ruff lint and
+format checks are mandatory. Review the staged diff and commit only the agent's
+task files after all required checks pass. Never commit raw/private data,
+credentials, caches, or large generated output. Do not push without explicit
+authorization.

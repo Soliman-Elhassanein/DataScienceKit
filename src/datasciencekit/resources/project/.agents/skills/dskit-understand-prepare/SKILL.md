@@ -27,4 +27,9 @@ Work only on IBM stages 5 and 6.
    limitations, and next action with `dskit log --kind handoff --stage "Data
    Preparation" "<summary>"`.
 
+When writing preparation or exploration code, follow
+`.dskit/memory/code-quality.md`: centralize shared data rules, keep notebooks free
+of hidden critical logic, run Ruff and relevant checks, inspect the staged diff,
+and create a focused commit only after checks pass.
+
 Do not choose a result based on final evaluation performance.
