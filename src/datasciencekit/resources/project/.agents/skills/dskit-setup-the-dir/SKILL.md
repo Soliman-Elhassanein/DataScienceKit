@@ -1,20 +1,19 @@
 ---
 name: dskit-setup-the-dir
-description: Set up or inspect the user-owned working directories in a DataScienceKit project. Use after dskit init when a study needs a clear, reproducible layout for data, code, notebooks, reports, and tests.
+description: Prepare a DataScienceKit project for real data-science work by creating its fixed layout and safely classifying loose data, notebooks, and Python files. Use when setting up or organizing a project.
 ---
 
 # Set Up the Project Directory
 
-Create the fixed project layout without moving, deleting, or renaming existing
-user files.
+Leave a structurally ready DataScienceKit project while preserving evidence and
+never guessing about data meaning.
 
-1. Run `dskit context --json` and `git status --short --branch`. Read
-   `.dskit/AGENT_GUIDE.md`, project principles, and the active handoff if a
-   study already exists.
-2. Inspect the repository before making directories. Reuse an established
-   layout when it already separates raw inputs, derived data, source code,
-   notebooks, reports, and tests clearly.
-3. Create these user-owned directories if they do not already exist:
+1. Inspect `git status --short --branch` and the repository root. If `.dskit/`
+   is absent, run `dskit init .`; otherwise run `dskit context --json` and read
+   `.dskit/AGENT_GUIDE.md`, project principles, and the active handoff when one
+   exists.
+2. Create this fixed user-owned layout when directories are absent. Preserve an
+   existing equivalent directory rather than creating a duplicate:
 
    ```text
    data/raw/        immutable source snapshots; never edit in place
@@ -28,17 +27,36 @@ user files.
 
    Add a placeholder file only when Git must retain an otherwise empty
    directory.
-4. `dskit init` copies its packaged workflow files; it does not clone a
-   repository. Do not clone one merely for setup. If a task explicitly requires
-   a temporary clone, place it in a unique temporary directory outside the
-   project, verify the required files were copied, then remove only that exact
-   temporary directory. Never delete the project root or a pre-existing clone.
+3. Before relocating a loose candidate file, inspect its name, extension,
+   parent directory, and safe metadata or text header. Preserve existing
+   organization and do not inspect raw sensitive values beyond what is needed
+   to classify the file. Move only files whose placement is unambiguous:
+
+   - tabular, geospatial, image, audio, or archive inputs → `data/raw/`;
+   - `.ipynb` exploration or communication notebooks → `notebooks/`;
+   - reusable non-test `.py` modules → `src/`;
+   - Python test modules and fixtures → `tests/`;
+   - generated figures, tables, or decision documents → `reports/`.
+
+   Do not infer that data is `interim` or `processed` from its format alone;
+   only place it there when its provenance or generating code establishes that
+   role. Leave ambiguous files in place, list them, and ask for direction.
+   Never relocate project configuration, dependency files, credentials,
+   licenses, READMEs, Git files, existing package directories, or files already
+   in the fixed layout.
+4. `dskit init` copies packaged workflow files; it does not clone a repository.
+   Do not clone one merely for setup. If setup itself explicitly created a
+   temporary clone, verify the installed project first, then remove only that
+   exact temporary directory. Never delete the project root or a pre-existing
+   clone.
 5. Keep sensitive, restricted, or large raw data out of Git unless the user and
    project governance rules explicitly permit it. Add narrowly scoped ignore
    rules when needed; do not replace existing `.gitignore` entries.
-6. For an active study, record the chosen locations and their data-flow roles in
-   the current append-only file under `history/`, register important immutable inputs and outputs
-   with `dskit artifact`, then update the work plan and handoff.
+6. For an active study, record chosen locations and data-flow roles in the
+   current append-only file under `history/`, register important immutable
+   inputs and outputs with `dskit artifact`, then update the work plan and
+   handoff. If no study exists, do not invent a business question or study title;
+   report that `$dskit-understand` or `dskit new "TITLE"` is the next step.
 7. Review the diff, stage only layout files belonging to this request, and make
    a focused commit if the project workflow requires a handoff.
 

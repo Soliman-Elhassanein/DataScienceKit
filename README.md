@@ -74,8 +74,13 @@ fresh session after initialization so they are discovered.
 The managed workflow state and the ordinary analytical working files are kept
 separate. After `dskit init`, use `$dskit-setup-the-dir` to inspect or create a
 fixed user-owned layout for data, code, notebooks, reports, and tests. It
-never moves or deletes existing files. `dskit init` copies packaged files; it
-does not clone a repository.
+relocates only unambiguous loose files and never deletes existing files.
+`dskit init` copies packaged files; it does not clone a repository.
+
+The setup skill can safely classify and relocate unambiguous loose data,
+notebooks, reusable Python modules, tests, and reports into that layout. It
+leaves ambiguous data in place rather than guessing whether it is raw,
+intermediate, or processed.
 
 To upgrade an existing DataScienceKit project, install the new CLI and run
 `dskit init --force`. It updates managed instructions and backfills missing
