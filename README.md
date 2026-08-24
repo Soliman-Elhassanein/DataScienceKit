@@ -71,6 +71,11 @@ dskit context
 Codex users also receive project-local skills under `.agents/skills/`. Start a
 fresh session after initialization so they are discovered.
 
+The managed workflow state and the ordinary analytical working files are kept
+separate. After `dskit init`, use `$dskit-setup-the-dir` to inspect or create a
+minimal user-owned layout for data, code, notebooks, reports, and tests. It
+never moves or deletes existing files.
+
 To upgrade an existing DataScienceKit project, install the new CLI and run
 `dskit init --force`. It updates managed instructions and backfills missing
 continuity files without overwriting existing studies, logs, thoughts, memory,
@@ -82,6 +87,7 @@ Start with project-wide scientific and governance rules:
 
 ```text
 $dskit-principles
+$dskit-setup-the-dir
 ```
 
 Then work through the five iterative groups:
@@ -144,6 +150,19 @@ All continuity is file-backed:
     ├── experiments/           Append-only registry and EXP-NNN records
     ├── artifacts/manifest.md  Output lineage and fingerprints
     └── 01…10-*.md             Ten IBM methodology artifacts
+```
+
+The skill may add only the user-owned folders that the project needs:
+
+```text
+data/
+├── raw/                        Immutable source snapshots
+├── interim/                    Reproducible intermediate outputs
+└── processed/                  Model-ready data
+src/                             Reusable analytical code
+notebooks/                       Exploration and communication
+reports/                         Figures, tables, and decision-ready outputs
+tests/                           Checks for reusable code and data boundaries
 ```
 
 Use `$dskit-resume` in Codex or `dskit context` with any agent to reconstruct the
