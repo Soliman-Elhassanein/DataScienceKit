@@ -73,12 +73,12 @@ class DataScienceKitCliTests(unittest.TestCase):
         study = new_study(self.root, "Customer Churn")
 
         self.assertEqual("001-customer-churn", study.name)
-        self.assertTrue(all((study / path).is_file() for path in ARTIFACTS))
-        self.assertTrue(all((study / path).with_name("LOG.md").is_file() for path in ARTIFACTS))
+        self.assertTrue((study / "history/001-01-business-understanding.md").is_file())
+        self.assertEqual(1, len(list((study / "history").glob("*.md"))))
         self.assertEqual(1, project_status(self.root)["current_step"]["number"])
         for relative in STUDY_SUPPORT_FILES:
             self.assertTrue((study / relative).is_file())
-        first = study / "01-business-understanding/README.md"
+        first = study / "history/001-01-business-understanding.md"
         self.assertIn("Customer Churn", first.read_text(encoding="utf-8"))
         status = project_status(self.root)
         self.assertEqual(".dskit/studies/001-customer-churn", status["active_study"])
@@ -91,10 +91,10 @@ class DataScienceKitCliTests(unittest.TestCase):
 
         study = new_study(self.root, "Forecast Demand")
 
-        self.assertEqual(
+        self.assertIn(
             "# Forecast Demand custom\n",
             override.parent.parent.joinpath(
-                "studies", study.name, "01-business-understanding", "README.md"
+                "studies", study.name, "history", "001-01-business-understanding.md"
             ).read_text(),
         )
 
@@ -116,7 +116,7 @@ class DataScienceKitCliTests(unittest.TestCase):
         self.assertEqual(0, exit_code)
         payload = json.loads(output.getvalue())
         self.assertEqual(str(self.root.resolve()), payload["project_root"])
-        self.assertIn("01-business-understanding/README.md", payload["artifacts"])
+        self.assertIn("01-business-understanding.md", payload["artifacts"])
         self.assertTrue(payload["version_control"]["repository"])
         self.assertEqual(0, payload["continuity"]["experiment_count"])
         self.assertIn("HANDOFF.md", payload["continuity"]["handoff"])
@@ -259,9 +259,10 @@ class DataScienceKitCliTests(unittest.TestCase):
     def test_force_reinitialization_backfills_missing_continuity_without_overwrite(self) -> None:
         init_project(self.root)
         study = new_study(self.root, "Legacy Study")
-        business = study / "01-business-understanding/README.md"
+        business = study / "history/001-01-business-understanding.md"
         business.write_text("# Preserved evidence\n", encoding="utf-8")
-        legacy_business = study / "01-business-understanding.md"
+        legacy_business = study / "01-business-understanding/README.md"
+        legacy_business.parent.mkdir(parents=True)
         business.rename(legacy_business)
         for relative in STUDY_SUPPORT_FILES:
             (study / relative).unlink()
@@ -286,8 +287,10 @@ class DataScienceKitCliTests(unittest.TestCase):
 
             principles = self.root / ".dskit/memory/principles.md"
             principles.write_text(principles.read_text().replace("[TODO]", "Defined"))
+            for number in range(2, 11):
+                set_current_step(self.root, number, f"Advance to step {number} for validation.")
             for name in ARTIFACTS:
-                path = study / name
+                path = Path(project_status(self.root)["artifacts"][name]["path"])
                 path.write_text(path.read_text().replace("[TODO", "[DONE"))
 
             plan = study / "work/plan.md"
@@ -313,7 +316,7 @@ class DataScienceKitCliTests(unittest.TestCase):
                 .replace("[TODO]", "Primary measure")
                 .replace("| Not run |", "| Passed baseline |")
             )
-            evaluation = study / "08-evaluation/README.md"
+            evaluation = Path(project_status(self.root)["artifacts"]["08-evaluation.md"]["path"])
             evaluation.write_text(evaluation.read_text() + "\nExperiment evidence: EXP-001\n")
             register_artifact(
                 self.root,
@@ -345,11 +348,16 @@ class DataScienceKitCliTests(unittest.TestCase):
         status = project_status(self.root)
         self.assertEqual(1, status["current_step"]["number"])
         self.assertEqual(2, status["current_step"]["iteration"])
-        history = (study / "work/iterations.md").read_text(encoding="utf-8")
-        self.assertIn("ITR-002", history)
-        self.assertIn("cannot be modeled as framed", history)
-        stage_log = (study / "01-business-understanding/LOG.md").read_text(encoding="utf-8")
-        self.assertIn("cannot be modeled as framed", stage_log)
+        history = sorted((study / "history").glob("*.md"))
+        self.assertEqual(
+            [
+                "001-01-business-understanding.md",
+                "002-07-modeling.md",
+                "003-01-business-understanding.md",
+            ],
+            [path.name for path in history],
+        )
+        self.assertIn("cannot be modeled as framed", history[-1].read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

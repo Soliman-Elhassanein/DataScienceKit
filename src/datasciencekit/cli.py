@@ -20,16 +20,16 @@ from datasciencekit import __version__
 
 MANAGED_DIR = ".dskit"
 ARTIFACTS = (
-    "01-business-understanding/README.md",
-    "02-analytic-approach/README.md",
-    "03-data-requirements/README.md",
-    "04-data-collection/README.md",
-    "05-data-understanding/README.md",
-    "06-data-preparation/README.md",
-    "07-modeling/README.md",
-    "08-evaluation/README.md",
-    "09-deployment/README.md",
-    "10-feedback/README.md",
+    "01-business-understanding.md",
+    "02-analytic-approach.md",
+    "03-data-requirements.md",
+    "04-data-collection.md",
+    "05-data-understanding.md",
+    "06-data-preparation.md",
+    "07-modeling.md",
+    "08-evaluation.md",
+    "09-deployment.md",
+    "10-feedback.md",
 )
 
 STUDY_SUPPORT_FILES = (
@@ -38,7 +38,6 @@ STUDY_SUPPORT_FILES = (
     "work/checks.md",
     "experiments/registry.md",
     "artifacts/manifest.md",
-    "work/iterations.md",
 )
 
 REQUIRED_CHECKS = {
@@ -82,7 +81,7 @@ def _resource_path(*parts: str):
 
 
 def _stage_number(artifact: str) -> int:
-    return int(Path(artifact).parts[0].split("-", 1)[0])
+    return int(Path(artifact).stem.split("-", 1)[0])
 
 
 def _stage_artifact(number: int) -> str:
@@ -106,6 +105,41 @@ def _study_state(study: Path) -> dict[str, Any]:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise DskitError(f"cannot read study state: {exc}") from exc
+
+
+def _history_entries(study: Path) -> list[tuple[int, str, Path]]:
+    history = study / "history"
+    if not history.is_dir():
+        return []
+    entries: list[tuple[int, str, Path]] = []
+    for path in history.glob("*.md"):
+        match = re.fullmatch(r"(\d{3})-(\d{2}-.+\.md)", path.name)
+        if match and match.group(2) in ARTIFACTS:
+            entries.append((int(match.group(1)), match.group(2), path))
+    return sorted(entries)
+
+
+def _create_history_entry(root: Path, study: Path, artifact: str, reason: str) -> Path:
+    entries = _history_entries(study)
+    sequence = max((entry[0] for entry in entries), default=0) + 1
+    title = _study_state(study).get("title") or study.name
+    overrides = root / MANAGED_DIR / "templates"
+    source = (
+        overrides / artifact
+        if (overrides / artifact).is_file()
+        else _resource_path("study", artifact)
+    )
+    with as_file(source) as source_path:
+        template = source_path.read_text(encoding="utf-8")
+    content = template.replace("{{STUDY_TITLE}}", str(title))
+    metadata = (
+        f"<!-- History entry: {sequence:03d}; IBM step: {_stage_number(artifact):02d}; "
+        f"Created: {_utc_now()}; Reason: {_safe_cell(reason)} -->\n\n"
+    )
+    destination = study / "history" / f"{sequence:03d}-{artifact}"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(metadata + content, encoding="utf-8")
+    return destination
 
 
 def _resource_conflicts(source_parts: tuple[str, ...], destination: Path) -> list[Path]:
@@ -187,23 +221,6 @@ def append_project_log(root: Path, message: str, kind: str, stage: str | None = 
     )
     with path.open("a", encoding="utf-8") as stream:
         stream.write(entry)
-    if config.get("active_study") and stage:
-        stage_artifact = next(
-            (
-                artifact
-                for artifact, name in STAGE_NAMES.items()
-                if stage in {name, _stage_label(artifact)}
-            ),
-            None,
-        )
-        if stage_artifact:
-            stage_log = root / config["active_study"] / Path(stage_artifact).parent / "LOG.md"
-            if stage_log.is_file():
-                row = (
-                    f"| {_utc_now()} | {_safe_cell(kind)} | {_safe_cell(message)} | "
-                    "See project log | See handoff |"
-                )
-                _replace_placeholder_row(stage_log, row)
     _append_machine_event(root, "project_log_appended", kind=kind, stage=stage)
 
 
@@ -399,25 +416,42 @@ def _install_missing_study_support(root: Path) -> list[Path]:
     relative_files = (*STUDY_SUPPORT_FILES, "experiments/EXPERIMENT-TEMPLATE.md")
     for study in sorted(path for path in studies.iterdir() if path.is_dir()):
         title = re.sub(r"^\d{3}-", "", study.name).replace("-", " ").title()
-        for artifact in ARTIFACTS:
-            legacy = study / f"{Path(artifact).parts[0]}.md"
-            destination = study / artifact
-            if legacy.is_file() and not destination.exists():
+        if not _history_entries(study):
+            for sequence, artifact in enumerate(ARTIFACTS, start=1):
+                folder_source = study / Path(artifact).stem / "README.md"
+                flat_source = study / artifact
+                source = folder_source if folder_source.is_file() else flat_source
+                if not source.is_file():
+                    continue
+                destination = study / "history" / f"{sequence:03d}-{artifact}"
                 destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.move(str(legacy), str(destination))
+                shutil.move(str(source), str(destination))
                 installed.append(destination)
-            stage_log = destination.parent / "LOG.md"
-            if not stage_log.exists():
-                source = _resource_path("study", "STAGE_LOG.md")
-                with as_file(source) as source_path:
-                    content = source_path.read_text(encoding="utf-8")
-                stage_log.write_text(
-                    content.replace("{{STUDY_TITLE}}", title).replace(
-                        "{{STAGE}}", _stage_label(artifact)
-                    ),
-                    encoding="utf-8",
+            if not _history_entries(study):
+                state = _study_state(study)
+                first = _create_history_entry(root, study, ARTIFACTS[0], "Imported existing study.")
+                state["current_entry"] = first.relative_to(study).as_posix()
+                state.setdefault("current_step", 1)
+                state.setdefault("iteration", 1)
+                state.setdefault("title", title)
+                _write_json(study / "STATE.json", state)
+                installed.append(first)
+            else:
+                state = _study_state(study)
+                current_number = int(state.get("current_step", 1))
+                current_artifact = _stage_artifact(current_number)
+                entries = _history_entries(study)
+                matching = [path for _, artifact, path in entries if artifact == current_artifact]
+                current = matching[-1] if matching else entries[-1][2]
+                state.update(
+                    {
+                        "title": state.get("title", title),
+                        "current_step": _stage_number(current.name.split("-", 1)[1]),
+                        "iteration": int(state.get("iteration", 1)),
+                        "current_entry": current.relative_to(study).as_posix(),
+                    }
                 )
-                installed.append(stage_log)
+                _write_json(study / "STATE.json", state)
         for relative in relative_files:
             destination = study / relative
             if destination.exists():
@@ -430,7 +464,21 @@ def _install_missing_study_support(root: Path) -> list[Path]:
             installed.append(destination)
         state = study / "STATE.json"
         if not state.exists():
-            _write_json(state, {"current_step": 1, "iteration": 1})
+            entries = _history_entries(study)
+            first = (
+                entries[-1][2]
+                if entries
+                else _create_history_entry(root, study, ARTIFACTS[0], "Imported existing study.")
+            )
+            _write_json(
+                state,
+                {
+                    "title": title,
+                    "current_step": _stage_number(first.name.split("-", 1)[1]),
+                    "iteration": 1,
+                    "current_entry": first.relative_to(study).as_posix(),
+                },
+            )
             installed.append(state)
     return installed
 
@@ -455,9 +503,7 @@ def new_study(root: Path, title: str) -> Path:
         relative_files = [
             path.relative_to(source_path)
             for path in source_path.rglob("*")
-            if path.is_file()
-            and not re.fullmatch(r"\d{2}-.+\.md", path.name)
-            and path.name != "STAGE_LOG.md"
+            if path.is_file() and not re.fullmatch(r"\d{2}-.+\.md", path.name)
         ]
         for relative in relative_files:
             source = (
@@ -469,29 +515,11 @@ def new_study(root: Path, title: str) -> Path:
             destination.parent.mkdir(parents=True, exist_ok=True)
             destination.write_text(content, encoding="utf-8")
 
-        for artifact in ARTIFACTS:
-            source_name = f"{Path(artifact).parts[0]}.md"
-            source = (
-                overrides / source_name
-                if (overrides / source_name).is_file()
-                else source_path / source_name
-            )
-            destination = study / artifact
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_text(
-                source.read_text(encoding="utf-8").replace("{{STUDY_TITLE}}", title.strip()),
-                encoding="utf-8",
-            )
-            log_template = source_path / "STAGE_LOG.md"
-            log_destination = destination.parent / "LOG.md"
-            log_destination.write_text(
-                log_template.read_text(encoding="utf-8")
-                .replace("{{STUDY_TITLE}}", title.strip())
-                .replace("{{STAGE}}", _stage_label(artifact)),
-                encoding="utf-8",
-            )
-
-    _write_json(study / "STATE.json", {"current_step": 1, "iteration": 1})
+    _write_json(study / "STATE.json", {"title": title.strip(), "current_step": 1, "iteration": 1})
+    first = _create_history_entry(root, study, ARTIFACTS[0], "Study created.")
+    state = _study_state(study)
+    state["current_entry"] = first.relative_to(study).as_posix()
+    _write_json(study / "STATE.json", state)
 
     config = _load_config(root)
     config["active_study"] = study.relative_to(root).as_posix()
@@ -652,21 +680,20 @@ def set_current_step(root: Path, number: int, reason: str) -> dict[str, Any]:
     state = _study_state(study)
     previous = int(state.get("current_step", 1))
     iteration = int(state.get("iteration", 1)) + (number < previous)
-    state.update({"current_step": number, "iteration": iteration, "updated_at": _utc_now()})
-    _write_json(study / "STATE.json", state)
-    iterations = study / "work" / "iterations.md"
-    rows = _markdown_rows(iterations)
-    iteration_id = f"ITR-{len(rows) + 1:03d}"
-    row = (
-        f"| {iteration_id} | {_utc_now()} | {iteration} | {previous:02d} — "
-        f"{STAGE_NAMES[_stage_artifact(previous)]} | {_stage_label(artifact)} | "
-        f"{_safe_cell(reason)} |"
+    entry = _create_history_entry(root, study, artifact, reason)
+    state.update(
+        {
+            "current_step": number,
+            "iteration": iteration,
+            "current_entry": entry.relative_to(study).as_posix(),
+            "updated_at": _utc_now(),
+        }
     )
-    _replace_placeholder_row(iterations, row)
+    _write_json(study / "STATE.json", state)
     _append_machine_event(
         root,
         "step_changed",
-        iteration_id=iteration_id,
+        history_entry=entry.relative_to(study).as_posix(),
         from_step=previous,
         to_step=number,
         reason=reason.strip(),
@@ -728,15 +755,17 @@ def project_status(root: Path) -> dict[str, Any]:
         state = _study_state(study)
         current_number = int(state.get("current_step", 1))
         current_artifact = _stage_artifact(current_number)
+        current_path = study / state.get("current_entry", "")
         result["current_step"] = {
             "number": current_number,
             "name": STAGE_NAMES[current_artifact],
             "label": _stage_label(current_artifact),
-            "path": str(study / current_artifact),
+            "path": str(current_path),
             "iteration": int(state.get("iteration", 1)),
         }
+        latest = {artifact: path for _, artifact, path in _history_entries(study)}
         for artifact in ARTIFACTS:
-            path = study / artifact
+            path = latest.get(artifact, study / "history" / artifact)
             count = _todo_count(path)
             result["artifacts"][artifact] = {
                 "stage": STAGE_NAMES[artifact],
@@ -761,7 +790,7 @@ def project_status(root: Path) -> dict[str, Any]:
             "checks": str(study / "work" / "checks.md"),
             "experiment_registry": str(study / "experiments" / "registry.md"),
             "artifact_manifest": str(study / "artifacts" / "manifest.md"),
-            "iterations": str(study / "work" / "iterations.md"),
+            "history": str(study / "history"),
             "open_work": sum(
                 len(row) > 1 and row[1].lower() not in {"done", "abandoned"} for row in plan_rows
             ),
@@ -868,7 +897,10 @@ def validate_project(root: Path) -> list[str]:
             errors.append(f"missing experiment record: {experiment_id}")
         elif _todo_count(record) != 0:
             errors.append(f"incomplete experiment record: {experiment_id}")
-    evaluation = study / "08-evaluation/README.md"
+    evaluation = next(
+        (path for _, artifact, path in _history_entries(study) if artifact == "08-evaluation.md"),
+        study / "history" / "08-evaluation.md",
+    )
     evaluation_text = evaluation.read_text(encoding="utf-8") if evaluation.is_file() else ""
     if experiment_ids and not any(
         experiment_id in evaluation_text for experiment_id in experiment_ids

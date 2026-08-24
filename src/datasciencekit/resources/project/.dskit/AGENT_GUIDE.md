@@ -17,8 +17,8 @@ work when `dskit context --json` reports that no Git repository exists.
 4. Read `.dskit/memory/code-quality.md` before changing analysis code.
 5. Read the active study's `HANDOFF.md`, `work/plan.md`, `work/checks.md`,
    `experiments/registry.md`, and `artifacts/manifest.md`.
-6. Read completed active-study artifacts in numeric order and inspect the
-   records for any experiments relevant to the next action.
+6. Read active-study `history/` entries in sequence and inspect the records for
+   any experiments relevant to the next action.
 7. Read the recent entries in `.dskit/logs/project.md`.
 8. Review relevant entries in `.dskit/thoughts/backlog.md` without treating
    proposed thoughts as approved work.

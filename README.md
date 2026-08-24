@@ -80,8 +80,8 @@ does not clone a repository.
 To upgrade an existing DataScienceKit project, install the new CLI and run
 `dskit init --force`. It updates managed instructions and backfills missing
 continuity files without overwriting existing studies, logs, thoughts, memory,
-quality reports, or project-local templates. It moves a legacy flat stage file
-into its matching numbered folder only when that folder has no artifact yet.
+quality reports, or project-local templates. It migrates legacy stage files to
+the append-only history when that history does not yet exist.
 
 ## IBM workflow commands
 
@@ -147,17 +147,11 @@ All continuity is file-backed:
 └── studies/NNN-study-name/
     ├── STATE.json             Explicit current step and iteration number
     ├── HANDOFF.md             Exact cross-session restart point
-    ├── 01-business-understanding/{README,LOG}.md
-    ├── 02-analytic-approach/{README,LOG}.md
-    ├── 03-data-requirements/{README,LOG}.md
-    ├── 04-data-collection/{README,LOG}.md
-    ├── 05-data-understanding/{README,LOG}.md
-    ├── 06-data-preparation/{README,LOG}.md
-    ├── 07-modeling/{README,LOG}.md
-    ├── 08-evaluation/{README,LOG}.md
-    ├── 09-deployment/{README,LOG}.md
-    ├── 10-feedback/{README,LOG}.md
-    ├── work/{plan,checks,iterations}.md
+    ├── history/               Append-only chronological IBM-stage records
+    │   ├── 001-01-business-understanding.md
+    │   ├── 002-02-analytic-approach.md
+    │   └── 003-…
+    ├── work/{plan,checks}.md
     ├── experiments/           Append-only registry and EXP-NNN records
     └── artifacts/manifest.md  Output lineage and fingerprints
 ```
@@ -187,8 +181,8 @@ dskit step 1 --reason "Modeling showed the problem cannot be modeled as framed."
 ```
 
 The last command starts the next iteration. It preserves the modeling and
-evaluation records, sets the current step back to `01`, and records the reason
-in `work/iterations.md`, the project log, and the destination stage's `LOG.md`.
+evaluation records, sets the current step back to `01`, and appends a new
+Business Understanding record in `history/` with the reason and timestamp.
 
 Use `$dskit-resume` in Codex or `dskit context` with any agent to reconstruct the
 active study, completed stages, next stage, recent decisions, and available

@@ -37,7 +37,7 @@ user files.
    project governance rules explicitly permit it. Add narrowly scoped ignore
    rules when needed; do not replace existing `.gitignore` entries.
 6. For an active study, record the chosen locations and their data-flow roles in
-   the relevant IBM artifact, register important immutable inputs and outputs
+   the current append-only file under `history/`, register important immutable inputs and outputs
    with `dskit artifact`, then update the work plan and handoff.
 7. Review the diff, stage only layout files belonging to this request, and make
    a focused commit if the project workflow requires a handoff.
