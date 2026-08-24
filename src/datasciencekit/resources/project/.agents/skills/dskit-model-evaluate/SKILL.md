@@ -28,7 +28,9 @@ Work on IBM stages 7 and 8 while keeping planning distinct from judgment.
    threshold; assess uncertainty, robustness, errors, subgroups, fairness,
    generalizability, and intended-use fitness. Missing evidence is not a pass.
 6. Distinguish association from causation. Recommend deployment, revision of a
-   named earlier IBM stage, more evidence, or stopping.
+   named earlier IBM stage, more evidence, or stopping. When revisiting a stage,
+   run `dskit step NUMBER --reason "<evidence-backed reason>"`; this preserves
+   the modeling record and starts a new iteration.
 7. Register decision-relevant outputs with `dskit artifact`, update the work
    plan and evidence gates, then write the snapshot with `dskit handoff`.
 

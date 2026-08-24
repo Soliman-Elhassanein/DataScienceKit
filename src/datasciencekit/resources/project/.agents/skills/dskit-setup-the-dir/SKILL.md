@@ -5,8 +5,8 @@ description: Set up or inspect the user-owned working directories in a DataScien
 
 # Set Up the Project Directory
 
-Create a small, conventional working layout without moving, deleting, or
-renaming existing user files.
+Create the fixed project layout without moving, deleting, or renaming existing
+user files.
 
 1. Run `dskit context --json` and `git status --short --branch`. Read
    `.dskit/AGENT_GUIDE.md`, project principles, and the active handoff if a
@@ -14,7 +14,7 @@ renaming existing user files.
 2. Inspect the repository before making directories. Reuse an established
    layout when it already separates raw inputs, derived data, source code,
    notebooks, reports, and tests clearly.
-3. When no equivalent layout exists, create only the needed empty directories:
+3. Create these user-owned directories if they do not already exist:
 
    ```text
    data/raw/        immutable source snapshots; never edit in place
@@ -27,14 +27,19 @@ renaming existing user files.
    ```
 
    Add a placeholder file only when Git must retain an otherwise empty
-   directory. Do not create a directory just because it appears in this list.
-4. Keep sensitive, restricted, or large raw data out of Git unless the user and
+   directory.
+4. `dskit init` copies its packaged workflow files; it does not clone a
+   repository. Do not clone one merely for setup. If a task explicitly requires
+   a temporary clone, place it in a unique temporary directory outside the
+   project, verify the required files were copied, then remove only that exact
+   temporary directory. Never delete the project root or a pre-existing clone.
+5. Keep sensitive, restricted, or large raw data out of Git unless the user and
    project governance rules explicitly permit it. Add narrowly scoped ignore
    rules when needed; do not replace existing `.gitignore` entries.
-5. For an active study, record the chosen locations and their data-flow roles in
+6. For an active study, record the chosen locations and their data-flow roles in
    the relevant IBM artifact, register important immutable inputs and outputs
    with `dskit artifact`, then update the work plan and handoff.
-6. Review the diff, stage only layout files belonging to this request, and make
+7. Review the diff, stage only layout files belonging to this request, and make
    a focused commit if the project workflow requires a handoff.
 
 The `.dskit/` directory is managed workflow state. Do not store notebooks,

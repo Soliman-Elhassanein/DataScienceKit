@@ -24,7 +24,8 @@ work when `dskit context --json` reports that no Git repository exists.
    proposed thoughts as approved work.
 9. Continue from the handoff's exact next action and work plan unless evidence
    requires revisiting an earlier IBM
-   stage. Record that iteration explicitly.
+   stage. Record every movement with `dskit step NUMBER --reason "why"`; a move
+   backward starts a new iteration and preserves the later-stage evidence.
 
 ## While Working
 

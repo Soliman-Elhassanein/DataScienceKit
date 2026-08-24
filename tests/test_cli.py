@@ -23,6 +23,7 @@ from datasciencekit.cli import (
     project_context,
     project_status,
     register_artifact,
+    set_current_step,
     validate_project,
     write_handoff,
 )
@@ -72,10 +73,12 @@ class DataScienceKitCliTests(unittest.TestCase):
         study = new_study(self.root, "Customer Churn")
 
         self.assertEqual("001-customer-churn", study.name)
-        self.assertTrue(set(ARTIFACTS).issubset({path.name for path in study.iterdir()}))
+        self.assertTrue(all((study / path).is_file() for path in ARTIFACTS))
+        self.assertTrue(all((study / path).with_name("LOG.md").is_file() for path in ARTIFACTS))
+        self.assertEqual(1, project_status(self.root)["current_step"]["number"])
         for relative in STUDY_SUPPORT_FILES:
             self.assertTrue((study / relative).is_file())
-        first = study / "01-business-understanding.md"
+        first = study / "01-business-understanding/README.md"
         self.assertIn("Customer Churn", first.read_text(encoding="utf-8"))
         status = project_status(self.root)
         self.assertEqual(".dskit/studies/001-customer-churn", status["active_study"])
@@ -90,7 +93,9 @@ class DataScienceKitCliTests(unittest.TestCase):
 
         self.assertEqual(
             "# Forecast Demand custom\n",
-            override.parent.parent.joinpath("studies", study.name, override.name).read_text(),
+            override.parent.parent.joinpath(
+                "studies", study.name, "01-business-understanding", "README.md"
+            ).read_text(),
         )
 
     def test_status_json_works_from_nested_directory(self) -> None:
@@ -111,7 +116,7 @@ class DataScienceKitCliTests(unittest.TestCase):
         self.assertEqual(0, exit_code)
         payload = json.loads(output.getvalue())
         self.assertEqual(str(self.root.resolve()), payload["project_root"])
-        self.assertIn("01-business-understanding.md", payload["artifacts"])
+        self.assertIn("01-business-understanding/README.md", payload["artifacts"])
         self.assertTrue(payload["version_control"]["repository"])
         self.assertEqual(0, payload["continuity"]["experiment_count"])
         self.assertIn("HANDOFF.md", payload["continuity"]["handoff"])
@@ -254,14 +259,17 @@ class DataScienceKitCliTests(unittest.TestCase):
     def test_force_reinitialization_backfills_missing_continuity_without_overwrite(self) -> None:
         init_project(self.root)
         study = new_study(self.root, "Legacy Study")
-        business = study / "01-business-understanding.md"
+        business = study / "01-business-understanding/README.md"
         business.write_text("# Preserved evidence\n", encoding="utf-8")
+        legacy_business = study / "01-business-understanding.md"
+        business.rename(legacy_business)
         for relative in STUDY_SUPPORT_FILES:
             (study / relative).unlink()
         (study / "experiments/EXPERIMENT-TEMPLATE.md").unlink()
 
         init_project(self.root, force=True)
 
+        self.assertFalse(legacy_business.exists())
         self.assertEqual("# Preserved evidence\n", business.read_text())
         for relative in STUDY_SUPPORT_FILES:
             self.assertTrue((study / relative).is_file())
@@ -305,7 +313,7 @@ class DataScienceKitCliTests(unittest.TestCase):
                 .replace("[TODO]", "Primary measure")
                 .replace("| Not run |", "| Passed baseline |")
             )
-            evaluation = study / "08-evaluation.md"
+            evaluation = study / "08-evaluation/README.md"
             evaluation.write_text(evaluation.read_text() + "\nExperiment evidence: EXP-001\n")
             register_artifact(
                 self.root,
@@ -320,6 +328,28 @@ class DataScienceKitCliTests(unittest.TestCase):
                 self.assertEqual(0, main(["validate"]))
         finally:
             os.chdir(previous)
+
+    def test_step_records_a_numbered_iteration_and_can_revisit_understanding(self) -> None:
+        init_project(self.root)
+        study = new_study(self.root, "Modeling Revision")
+
+        forward = set_current_step(self.root, 7, "Prepared data supports modeling.")
+        backward = set_current_step(
+            self.root,
+            1,
+            "Modeling showed the business problem cannot be modeled as framed.",
+        )
+
+        self.assertEqual(1, forward["iteration"])
+        self.assertEqual(2, backward["iteration"])
+        status = project_status(self.root)
+        self.assertEqual(1, status["current_step"]["number"])
+        self.assertEqual(2, status["current_step"]["iteration"])
+        history = (study / "work/iterations.md").read_text(encoding="utf-8")
+        self.assertIn("ITR-002", history)
+        self.assertIn("cannot be modeled as framed", history)
+        stage_log = (study / "01-business-understanding/LOG.md").read_text(encoding="utf-8")
+        self.assertIn("cannot be modeled as framed", stage_log)
 
 
 if __name__ == "__main__":

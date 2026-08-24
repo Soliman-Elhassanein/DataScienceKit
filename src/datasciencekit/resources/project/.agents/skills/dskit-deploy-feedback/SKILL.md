@@ -26,7 +26,8 @@ this workflow.
    method, observed outcomes, stakeholder response, unintended effects, changed
    assumptions, lessons, and next review date.
 6. Decide whether to continue, revise, pause, or retire. If revising, name the
-   IBM stage to revisit rather than silently changing completed evidence.
+   IBM stage to revisit and run `dskit step NUMBER --reason "<evidence-backed
+   reason>"` rather than silently changing completed evidence.
 7. Update `CHK-007` and `CHK-008`, close or carry forward every work item, write
    the handoff, run `dskit validate`, and append the iteration decision to the
    project log.
