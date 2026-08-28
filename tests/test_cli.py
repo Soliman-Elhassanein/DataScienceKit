@@ -48,6 +48,9 @@ class DataScienceKitCliTests(unittest.TestCase):
         self.assertTrue((self.root / ".dskit/quality/ruff.toml").is_file())
         self.assertTrue((self.root / ".dskit/logs/project.md").is_file())
         self.assertTrue((self.root / ".dskit/thoughts/backlog.md").is_file())
+        gitignore = (self.root / ".gitignore").read_text(encoding="utf-8")
+        self.assertIn("data/", gitignore)
+        self.assertIn(".dskit/logs/machine.jsonl", gitignore)
         skills = sorted((self.root / ".agents/skills").glob("dskit-*/SKILL.md"))
         self.assertEqual(11, len(skills))
         self.assertTrue((self.root / ".agents/skills/dskit-setup-the-dir/SKILL.md").is_file())
@@ -55,6 +58,18 @@ class DataScienceKitCliTests(unittest.TestCase):
         self.assertEqual("project_initialized", event["event"])
         self.assertTrue(project_status(self.root)["version_control"]["repository"])
         self.assertGreaterEqual(len(written), 17)
+
+    def test_init_merges_required_gitignore_entries_without_overwriting_rules(self) -> None:
+        self.root.mkdir(parents=True)
+        gitignore = self.root / ".gitignore"
+        gitignore.write_text("custom-output/\n", encoding="utf-8")
+
+        init_project(self.root)
+
+        content = gitignore.read_text(encoding="utf-8")
+        self.assertIn("custom-output/", content)
+        self.assertIn("data/", content)
+        self.assertIn(".dskit/logs/machine.jsonl", content)
 
     def test_init_preflights_conflicts_without_partial_overwrite(self) -> None:
         conflict = self.root / ".agents/skills/dskit-understand/SKILL.md"

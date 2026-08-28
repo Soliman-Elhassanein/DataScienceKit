@@ -148,7 +148,9 @@ def _resource_conflicts(source_parts: tuple[str, ...], destination: Path) -> lis
         return [
             destination / item.relative_to(source_path)
             for item in sorted(source_path.rglob("*"))
-            if item.is_file() and (destination / item.relative_to(source_path)).exists()
+            if item.is_file()
+            and item.name != ".gitignore"
+            and (destination / item.relative_to(source_path)).exists()
         ]
 
 
@@ -160,13 +162,25 @@ def _copy_resource_tree(
     with as_file(source) as source_path:
         items = [item for item in sorted(source_path.rglob("*")) if item.is_file()]
         conflicts = [destination / item.relative_to(source_path) for item in items]
-        conflicts = [target for target in conflicts if target.exists()]
+        conflicts = [
+            target for target in conflicts if target.exists() and target.name != ".gitignore"
+        ]
         if conflicts and not force:
             rendered = "\n".join(f"- {target}" for target in conflicts)
             raise DskitError(f"managed files already exist:\n{rendered}")
         for item in items:
             relative = item.relative_to(source_path)
             target = destination / relative
+            if item.name == ".gitignore" and target.exists():
+                required = item.read_text(encoding="utf-8").splitlines()
+                existing = target.read_text(encoding="utf-8")
+                missing = [line for line in required if line and line not in existing.splitlines()]
+                if missing:
+                    target.write_text(
+                        existing.rstrip() + "\n" + "\n".join(missing) + "\n", encoding="utf-8"
+                    )
+                    written.append(target)
+                continue
             durable_state = relative.parts[:2] in {
                 (".dskit", "logs"),
                 (".dskit", "memory"),

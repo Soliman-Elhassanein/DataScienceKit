@@ -49,9 +49,10 @@ never guessing about data meaning.
    temporary clone, verify the installed project first, then remove only that
    exact temporary directory. Never delete the project root or a pre-existing
    clone.
-5. Keep sensitive, restricted, or large raw data out of Git unless the user and
-   project governance rules explicitly permit it. Add narrowly scoped ignore
-   rules when needed; do not replace existing `.gitignore` entries.
+5. Ensure `.gitignore` contains exactly these required entries, adding only a
+   missing line and preserving all existing rules: `data/` and
+   `.dskit/logs/machine.jsonl`. Keep sensitive, restricted, or large raw data
+   out of Git unless the user and project governance rules explicitly permit it.
 6. For an active study, record chosen locations and data-flow roles in the
    current append-only file under `history/`, register important immutable
    inputs and outputs with `dskit artifact`, then update the work plan and

@@ -1,0 +1,3 @@
+# DataScienceKit project data and generated event history
+data/
+.dskit/logs/machine.jsonl
